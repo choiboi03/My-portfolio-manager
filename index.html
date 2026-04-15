@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STACKD — Portfolio Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ───────────────────────── CSS RESET & BASE ───────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F8F9FA;--surface:#FFFFFF;--border:#E2E8F0;
+  --text:#0F172A;--muted:#64748B;--accent:#2563EB;
+  --profit:#16A34A;--loss:#DC2626;--alert:#D97706;
+  --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  --font-mono:'Space Mono',monospace;--font-body:system-ui,-apple-system,sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#0A0F1A;--surface:#111827;--border:#1E293B;
+  --text:#F1F5F9;--muted:#94A3B8;--accent:#3B82F6;
+  --profit:#22C55E;--loss:#EF4444;--alert:#F59E0B;
+  --shadow:0 1px 3px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.2);
+}
+html{font-size:16px}
+body{
+  font-family:var(--font-body);color:var(--text);background:var(--bg);
+  min-height:100vh;display:flex;flex-direction:column;
+  transition:background .25s,color .25s;
+}
+.mono{font-family:var(--font-mono)}
+.profit{color:var(--profit)}.loss{color:var(--loss)}.alert{color:var(--alert)}
+
+/* ───────────────────────── TOP NAV ───────────────────────── */
+.topnav{
+  display:flex;align-items:center;gap:2px;padding:6px 12px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  overflow-x:auto;flex-shrink:0;position:sticky;top:0;z-index:100;
+}
+.topnav-brand{
+  font-family:var(--font-mono);font-weight:700;font-size:.95rem;
+  color:var(--accent);margin-right:8px;white-space:nowrap;letter-spacing:-0.5px;
+}
+.topnav button{
+  background:none;border:none;color:var(--muted);cursor:pointer;
+  font-size:.8rem;padding:7px 12px;border-radius:var(--radius);
+  white-space:nowrap;transition:all .15s;font-family:var(--font-body);
+}
+.topnav button:hover{background:var(--bg);color:var(--text)}
+.topnav button.active{background:var(--accent);color:#fff}
+
+/* ───────────────────────── BOTTOM NAV (mobile) ───────────────────────── */
+.bottomnav{
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:var(--surface);border-top:1px solid var(--border);
+  padding:4px 0 env(safe-area-inset-bottom,4px);
+}
+.bottomnav-inner{
+  display:grid;grid-template-columns:repeat(8,1fr);
+}
+.bottomnav button{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:none;border:none;color:var(--muted);cursor:pointer;
+  font-size:.55rem;padding:4px 0;transition:color .15s;font-family:var(--font-body);
+}
+.bottomnav button svg{width:20px;height:20px}
+.bottomnav button.active{color:var(--accent)}
+.bottomnav button.active svg{stroke:var(--accent)}
+
+@media(max-width:500px){
+  .topnav{display:none}
+  .bottomnav{display:block}
+  .main-content{padding-bottom:68px}
+}
+
+/* ───────────────────────── MAIN CONTENT ───────────────────────── */
+.main-content{flex:1;padding:20px;max-width:900px;width:100%;margin:0 auto}
+
+/* ───────────────────────── PLACEHOLDER VIEWS ───────────────────────── */
+.view{display:none}
+.view.active{display:block}
+.placeholder-view{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:50vh;gap:12px;color:var(--muted);
+}
+.placeholder-view svg{width:48px;height:48px;stroke:var(--border)}
+.placeholder-view p{font-size:.95rem}
+
+/* ───────────────────────── SETTINGS ───────────────────────── */
+.settings-section{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:20px;margin-bottom:16px;
+  box-shadow:var(--shadow);
+}
+.settings-section h3{
+  font-size:.85rem;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);margin-bottom:14px;font-weight:600;
+}
+.settings-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 0;border-bottom:1px solid var(--border);
+}
+.settings-row:last-child{border-bottom:none}
+.settings-row label{font-size:.9rem;color:var(--text)}
+
+/* Toggle switch */
+.toggle-group{display:flex;background:var(--bg);border-radius:6px;overflow:hidden;border:1px solid var(--border)}
+.toggle-group button{
+  padding:6px 16px;border:none;background:none;cursor:pointer;
+  font-size:.82rem;color:var(--muted);transition:all .15s;font-family:var(--font-body);
+}
+.toggle-group button.selected{background:var(--accent);color:#fff}
+
+/* Tag list */
+.tag-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.tag{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:20px;font-size:.82rem;
+  border:1px solid var(--border);background:var(--bg);color:var(--text);
+}
+.tag.preset{opacity:.6;cursor:default}
+.tag.custom .tag-delete{
+  cursor:pointer;color:var(--loss);font-size:1rem;line-height:1;
+  background:none;border:none;padding:0;font-family:var(--font-body);
+}
+.add-tag-row{display:flex;gap:8px;margin-top:10px}
+.add-tag-row input{
+  flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:6px;
+  background:var(--bg);color:var(--text);font-size:.85rem;outline:none;
+  font-family:var(--font-body);
+}
+.add-tag-row input:focus{border-color:var(--accent)}
+.add-tag-row button,.data-actions button{
+  padding:7px 16px;border:none;border-radius:6px;cursor:pointer;
+  font-size:.82rem;transition:all .15s;font-family:var(--font-body);
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{opacity:.85}
+.btn-danger{background:var(--loss);color:#fff}
+.btn-danger:hover{opacity:.85}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.data-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+
+/* ───────────────────────── CONFIRM DIALOG ───────────────────────── */
+.dialog-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+  z-index:999;align-items:center;justify-content:center;
+}
+.dialog-overlay.open{display:flex}
+.dialog-box{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:28px;max-width:400px;width:90%;
+  box-shadow:0 8px 30px rgba(0,0,0,.18);text-align:center;
+}
+.dialog-box h4{margin-bottom:10px;font-size:1rem}
+.dialog-box p{font-size:.88rem;color:var(--muted);margin-bottom:20px}
+.dialog-box .dialog-btns{display:flex;gap:10px;justify-content:center}
+
+/* ───────────────────────── HIDDEN FILE INPUT ───────────────────────── */
+#importFile{display:none}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ TOP NAV ═══════════════════ -->
+<nav class="topnav" id="topnav">
+  <span class="topnav-brand">STACKD</span>
+</nav>
+
+<!-- ═══════════════════ BOTTOM NAV (mobile) ═══════════════════ -->
+<nav class="bottomnav" id="bottomnav"><div class="bottomnav-inner"></div></nav>
+
+<!-- ═══════════════════ MAIN CONTENT ═══════════════════ -->
+<main class="main-content" id="mainContent"></main>
+
+<!-- ═══════════════════ CONFIRM DIALOG ═══════════════════ -->
+<div class="dialog-overlay" id="dialogOverlay">
+  <div class="dialog-box">
+    <h4 id="dialogTitle"></h4>
+    <p id="dialogMsg"></p>
+    <div class="dialog-btns">
+      <button class="btn-outline" id="dialogCancel"></button>
+      <button class="btn-danger" id="dialogConfirm"></button>
+    </div>
+  </div>
+</div>
+
+<!-- hidden file input for import -->
+<input type="file" id="importFile" accept=".json">
+
+<script>
+/* ╔══════════════════════════════════════════════════════════════════╗
+   ║  STACKD — Stock Portfolio Manager                               ║
+   ╚══════════════════════════════════════════════════════════════════╝ */
+
+// ─────────────────── INSTANCE PATTERN ───────────────────
+const _sid = new URLSearchParams(window.location.search).get('stackd_id');
+const DATA_KEY = 'stockmanager_data';
+const INSTANCE_KEY = _sid ? `stockmanager_instance_${_sid}` : null;
+
+// ─────────────────── PRESET DATA ───────────────────
+const PRESET_ACCOUNTS  = ['ISA','연금(IRP)','일반','해외위탁','기타'];
+const PRESET_CATEGORIES = ['AI·반도체','에너지·인프라','방산·우주','바이오·헬스','금융','소비재','ETF','현금성','기타'];
+
+const SEED_STOCKS = [
+  { ticker:'NVDA',   name:'NVIDIA',      exchange:'US', currency:'USD', holdings:10,  avgPrice:110,   category:'AI·반도체', account:'해외위탁', currentPrice:null, priceUpdatedAt:null, memo:'' },
+  { ticker:'005930', name:'삼성전자',     exchange:'KR', currency:'KRW', holdings:50,  avgPrice:71000, category:'AI·반도체', account:'ISA',      currentPrice:null, priceUpdatedAt:null, memo:'' },
+  { ticker:'RKLB',   name:'Rocket Lab',  exchange:'US', currency:'USD', holdings:100, avgPrice:8.5,   category:'방산·우주', account:'해외위탁', currentPrice:null, priceUpdatedAt:null, memo:'' },
+];
+
+// ─────────────────── i18n ───────────────────
+const i18n = {
+  en: {
+    appName: 'STACKD',
+    // Nav
+    nav_dashboard: 'Dashboard',
+    nav_graphs: 'Graphs',
+    nav_tradelog: 'Trade Log',
+    nav_news: 'News',
+    nav_myrule: 'My Rule',
+    nav_playbook: 'Playbook',
+    nav_mydb: 'My DB',
+    nav_settings: 'Settings',
+    // Settings
+    settings_display: 'Display',
+    settings_theme: 'Theme',
+    settings_language: 'Language',
+    settings_light: 'Light',
+    settings_dark: 'Dark',
+    settings_currency_section: 'Currency',
+    settings_currency_label: 'Display USD stocks in',
+    settings_accounts: 'Accounts',
+    settings_categories: 'Categories',
+    settings_data: 'Data Management',
+    settings_export: 'Export JSON',
+    settings_import: 'Import JSON',
+    settings_reset: 'Reset All Data',
+    settings_add_placeholder_account: 'New account name…',
+    settings_add_placeholder_category: 'New category name…',
+    settings_add: 'Add',
+    settings_preset: 'preset',
+    // Dialog
+    dialog_reset_title: 'Reset All Data?',
+    dialog_reset_msg: 'This will permanently delete all stocks, trades, news, rules, and settings. This action cannot be undone.',
+    dialog_cancel: 'Cancel',
+    dialog_confirm: 'Reset',
+    // Placeholders
+    placeholder_coming: 'Coming soon',
+    // Formatting
+    numberLocale: 'en-US',
+    dateFormat: 'MM/DD/YYYY',
+    currencySymbol: '$',
+  },
+  ko: {
+    appName: 'STACKD',
+    nav_dashboard: '대시보드',
+    nav_graphs: '그래프',
+    nav_tradelog: '거래 기록',
+    nav_news: '뉴스',
+    nav_myrule: '나의 규칙',
+    nav_playbook: '플레이북',
+    nav_mydb: '내 DB',
+    nav_settings: '설정',
+    settings_display: '화면',
+    settings_theme: '테마',
+    settings_language: '언어',
+    settings_light: '라이트',
+    settings_dark: '다크',
+    settings_currency_section: '통화',
+    settings_currency_label: 'USD 주식 표시 통화',
+    settings_accounts: '계좌',
+    settings_categories: '카테고리',
+    settings_data: '데이터 관리',
+    settings_export: 'JSON 내보내기',
+    settings_import: 'JSON 가져오기',
+    settings_reset: '전체 초기화',
+    settings_add_placeholder_account: '새 계좌명…',
+    settings_add_placeholder_category: '새 카테고리명…',
+    settings_add: '추가',
+    settings_preset: '기본',
+    dialog_reset_title: '전체 데이터를 초기화할까요?',
+    dialog_reset_msg: '모든 주식, 거래, 뉴스, 규칙 및 설정이 영구 삭제됩니다. 이 작업은 되돌릴 수 없습니다.',
+    dialog_cancel: '취소',
+    dialog_confirm: '초기화',
+    placeholder_coming: '준비 중',
+    numberLocale: 'ko-KR',
+    dateFormat: 'YYYY.MM.DD',
+    currencySymbol: '₩',
+  }
+};
+
+// ─────────────────── NAV DEFINITION ───────────────────
+const NAV_ITEMS = [
+  { id:'dashboard', icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>` },
+  { id:'graphs',    icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>` },
+  { id:'tradelog',  icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>` },
+  { id:'news',      icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><line x1="10" y1="6" x2="18" y2="6"/><line x1="10" y1="10" x2="18" y2="10"/><line x1="10" y1="14" x2="14" y2="14"/></svg>` },
+  { id:'myrule',    icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>` },
+  { id:'playbook',  icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>` },
+  { id:'mydb',      icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>` },
+  { id:'settings',  icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>` },
+];
+
+// ─────────────────── UTILITY: uuid ───────────────────
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,9); }
+
+// ─────────────────── DB LAYER ───────────────────
+function defaultDB(){
+  return {
+    stocks: SEED_STOCKS.map(s => ({ id:uid(), ...s })),
+    trades: [],
+    news: [],
+    rules: [],
+    playbook: { principles:[], goals:[], watchlist:[] },
+    exchangeRate: { USDKRW:1350, updatedAt:null },
+    settings: {
+      theme:'light',
+      language:'en',
+      currency:'USD',
+      customAccounts:[],
+      customCategories:[]
+    }
+  };
+}
+
+let db;
+function loadDB(){
+  try {
+    const raw = localStorage.getItem(DATA_KEY);
+    if(raw){ db = JSON.parse(raw); }
+    else { db = defaultDB(); saveDBImmediate(); }
+  } catch(e){ db = defaultDB(); saveDBImmediate(); }
+}
+
+function saveDBImmediate(){ localStorage.setItem(DATA_KEY, JSON.stringify(db)); }
+
+let _saveTimer = null;
+function saveDB(){
+  if(_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(()=>{ saveDBImmediate(); _saveTimer = null; }, 300);
+}
+
+// ─────────────────── INSTANCE STATE ───────────────────
+function saveInstanceView(viewId){
+  if(INSTANCE_KEY) localStorage.setItem(INSTANCE_KEY, viewId);
+}
+function restoreInstanceView(){
+  if(INSTANCE_KEY) return localStorage.getItem(INSTANCE_KEY);
+  return null;
+}
+
+// ─────────────────── i18n HELPER ───────────────────
+function t(key){
+  const lang = db.settings.language || 'en';
+  return (i18n[lang] && i18n[lang][key]) || (i18n.en[key]) || key;
+}
+
+function fmtNumber(n, currency){
+  const lang = db.settings.language || 'en';
+  const locale = i18n[lang].numberLocale;
+  if(currency === 'KRW'){
+    return '₩' + Math.round(n).toLocaleString(locale);
+  }
+  return '$' + n.toLocaleString(locale, { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+function fmtDate(d){
+  const lang = db.settings.language || 'en';
+  const date = new Date(d);
+  const mm = String(date.getMonth()+1).padStart(2,'0');
+  const dd = String(date.getDate()).padStart(2,'0');
+  const yyyy = date.getFullYear();
+  if(lang === 'ko') return `${yyyy}.${mm}.${dd}`;
+  return `${mm}/${dd}/${yyyy}`;
+}
+
+// ─────────────────── THEME ───────────────────
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
+// ─────────────────── BUILD NAV ───────────────────
+let currentView = 'dashboard';
+
+function buildNav(){
+  const topnav = document.getElementById('topnav');
+  const bottomInner = document.querySelector('.bottomnav-inner');
+
+  // clear existing buttons (keep brand)
+  topnav.querySelectorAll('button').forEach(b=>b.remove());
+  bottomInner.innerHTML = '';
+
+  NAV_ITEMS.forEach(item => {
+    // top nav button
+    const tbtn = document.createElement('button');
+    tbtn.textContent = t('nav_'+item.id);
+    tbtn.dataset.view = item.id;
+    if(item.id === currentView) tbtn.classList.add('active');
+    tbtn.addEventListener('click', ()=> navigateTo(item.id));
+    topnav.appendChild(tbtn);
+
+    // bottom nav button
+    const bbtn = document.createElement('button');
+    bbtn.innerHTML = item.icon + `<span>${t('nav_'+item.id)}</span>`;
+    bbtn.dataset.view = item.id;
+    if(item.id === currentView) bbtn.classList.add('active');
+    bbtn.addEventListener('click', ()=> navigateTo(item.id));
+    bottomInner.appendChild(bbtn);
+  });
+}
+
+function navigateTo(viewId){
+  currentView = viewId;
+  saveInstanceView(viewId);
+
+  // update nav active states
+  document.querySelectorAll('.topnav button, .bottomnav-inner button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.view === viewId);
+  });
+
+  renderMainContent();
+}
+
+// ─────────────────── RENDER MAIN ───────────────────
+function renderMainContent(){
+  const main = document.getElementById('mainContent');
+
+  if(currentView === 'settings'){
+    main.innerHTML = renderSettings();
+    bindSettingsEvents();
+  } else {
+    const icon = NAV_ITEMS.find(n=>n.id===currentView)?.icon || '';
+    main.innerHTML = `
+      <div class="placeholder-view">
+        ${icon}
+        <p><strong>${t('nav_'+currentView)}</strong></p>
+        <p style="font-size:.82rem">${t('placeholder_coming')}</p>
+      </div>`;
+  }
+}
+
+// ─────────────────── SETTINGS VIEW ───────────────────
+function renderSettings(){
+  const s = db.settings;
+  const allAccounts = PRESET_ACCOUNTS.map(a=>({name:a, preset:true}))
+    .concat((s.customAccounts||[]).map(a=>({name:a, preset:false})));
+  const allCategories = PRESET_CATEGORIES.map(c=>({name:c, preset:true}))
+    .concat((s.customCategories||[]).map(c=>({name:c, preset:false})));
+
+  return `
+  <!-- Display -->
+  <div class="settings-section">
+    <h3>${t('settings_display')}</h3>
+    <div class="settings-row">
+      <label>${t('settings_theme')}</label>
+      <div class="toggle-group" id="themeToggle">
+        <button data-val="light" class="${s.theme==='light'?'selected':''}">${t('settings_light')}</button>
+        <button data-val="dark" class="${s.theme==='dark'?'selected':''}">${t('settings_dark')}</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <label>${t('settings_language')}</label>
+      <div class="toggle-group" id="langToggle">
+        <button data-val="en" class="${s.language==='en'?'selected':''}">EN</button>
+        <button data-val="ko" class="${s.language==='ko'?'selected':''}">KO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Currency -->
+  <div class="settings-section">
+    <h3>${t('settings_currency_section')}</h3>
+    <div class="settings-row">
+      <label>${t('settings_currency_label')}</label>
+      <div class="toggle-group" id="currencyToggle">
+        <button data-val="USD" class="${s.currency==='USD'?'selected':''}">USD ($)</button>
+        <button data-val="KRW" class="${s.currency==='KRW'?'selected':''}">KRW (₩)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accounts -->
+  <div class="settings-section">
+    <h3>${t('settings_accounts')}</h3>
+    <div class="tag-list" id="accountTags">
+      ${allAccounts.map(a=> `
+        <span class="tag ${a.preset?'preset':'custom'}">
+          ${a.name}
+          ${a.preset ? `<span style="font-size:.7rem;color:var(--muted)">(${t('settings_preset')})</span>` : `<button class="tag-delete" data-type="account" data-name="${a.name}">&times;</button>`}
+        </span>`).join('')}
+    </div>
+    <div class="add-tag-row">
+      <input type="text" id="newAccountInput" placeholder="${t('settings_add_placeholder_account')}">
+      <button class="btn-primary" id="addAccountBtn">${t('settings_add')}</button>
+    </div>
+  </div>
+
+  <!-- Categories -->
+  <div class="settings-section">
+    <h3>${t('settings_categories')}</h3>
+    <div class="tag-list" id="categoryTags">
+      ${allCategories.map(c=> `
+        <span class="tag ${c.preset?'preset':'custom'}">
+          ${c.name}
+          ${c.preset ? `<span style="font-size:.7rem;color:var(--muted)">(${t('settings_preset')})</span>` : `<button class="tag-delete" data-type="category" data-name="${c.name}">&times;</button>`}
+        </span>`).join('')}
+    </div>
+    <div class="add-tag-row">
+      <input type="text" id="newCategoryInput" placeholder="${t('settings_add_placeholder_category')}">
+      <button class="btn-primary" id="addCategoryBtn">${t('settings_add')}</button>
+    </div>
+  </div>
+
+  <!-- Data -->
+  <div class="settings-section">
+    <h3>${t('settings_data')}</h3>
+    <div class="data-actions">
+      <button class="btn-outline" id="exportBtn">${t('settings_export')}</button>
+      <button class="btn-outline" id="importBtn">${t('settings_import')}</button>
+      <button class="btn-danger" id="resetBtn">${t('settings_reset')}</button>
+    </div>
+  </div>`;
+}
+
+function bindSettingsEvents(){
+  // Theme toggle
+  document.getElementById('themeToggle').addEventListener('click', e=>{
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    db.settings.theme = btn.dataset.val;
+    applyTheme(db.settings.theme);
+    saveDB();
+    renderMainContent();
+  });
+
+  // Language toggle
+  document.getElementById('langToggle').addEventListener('click', e=>{
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    db.settings.language = btn.dataset.val;
+    document.documentElement.lang = btn.dataset.val;
+    saveDB();
+    buildNav();
+    renderMainContent();
+  });
+
+  // Currency toggle
+  document.getElementById('currencyToggle').addEventListener('click', e=>{
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    db.settings.currency = btn.dataset.val;
+    saveDB();
+    renderMainContent();
+  });
+
+  // Add account
+  document.getElementById('addAccountBtn').addEventListener('click', ()=>{
+    const input = document.getElementById('newAccountInput');
+    const val = input.value.trim();
+    if(!val) return;
+    if(PRESET_ACCOUNTS.includes(val) || db.settings.customAccounts.includes(val)) return;
+    db.settings.customAccounts.push(val);
+    saveDB();
+    renderMainContent();
+  });
+  document.getElementById('newAccountInput').addEventListener('keydown', e=>{
+    if(e.key === 'Enter') document.getElementById('addAccountBtn').click();
+  });
+
+  // Add category
+  document.getElementById('addCategoryBtn').addEventListener('click', ()=>{
+    const input = document.getElementById('newCategoryInput');
+    const val = input.value.trim();
+    if(!val) return;
+    if(PRESET_CATEGORIES.includes(val) || db.settings.customCategories.includes(val)) return;
+    db.settings.customCategories.push(val);
+    saveDB();
+    renderMainContent();
+  });
+  document.getElementById('newCategoryInput').addEventListener('keydown', e=>{
+    if(e.key === 'Enter') document.getElementById('addCategoryBtn').click();
+  });
+
+  // Delete custom tags (accounts & categories)
+  document.querySelectorAll('.tag-delete').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const type = btn.dataset.type;
+      const name = btn.dataset.name;
+      if(type === 'account'){
+        db.settings.customAccounts = db.settings.customAccounts.filter(a=>a!==name);
+      } else {
+        db.settings.customCategories = db.settings.customCategories.filter(c=>c!==name);
+      }
+      saveDB();
+      renderMainContent();
+    });
+  });
+
+  // Export
+  document.getElementById('exportBtn').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(db, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stackd-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // Import
+  document.getElementById('importBtn').addEventListener('click', ()=>{
+    document.getElementById('importFile').click();
+  });
+  document.getElementById('importFile').addEventListener('change', e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        // basic validation: must have settings and stocks array
+        if(!imported.settings || !Array.isArray(imported.stocks)){
+          alert('Invalid file format');
+          return;
+        }
+        db = imported;
+        saveDBImmediate();
+        applyTheme(db.settings.theme || 'light');
+        document.documentElement.lang = db.settings.language || 'en';
+        buildNav();
+        renderMainContent();
+      } catch(err){
+        alert('Failed to parse JSON file');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  // Reset
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    showConfirmDialog(
+      t('dialog_reset_title'),
+      t('dialog_reset_msg'),
+      t('dialog_cancel'),
+      t('dialog_confirm'),
+      ()=>{
+        db = defaultDB();
+        saveDBImmediate();
+        applyTheme(db.settings.theme);
+        document.documentElement.lang = db.settings.language;
+        buildNav();
+        renderMainContent();
+      }
+    );
+  });
+}
+
+// ─────────────────── CONFIRM DIALOG ───────────────────
+function showConfirmDialog(title, msg, cancelText, confirmText, onConfirm){
+  const overlay = document.getElementById('dialogOverlay');
+  document.getElementById('dialogTitle').textContent = title;
+  document.getElementById('dialogMsg').textContent = msg;
+  const cancelBtn = document.getElementById('dialogCancel');
+  const confirmBtn = document.getElementById('dialogConfirm');
+  cancelBtn.textContent = cancelText;
+  confirmBtn.textContent = confirmText;
+  overlay.classList.add('open');
+
+  function close(){ overlay.classList.remove('open'); cleanup(); }
+  function cleanup(){
+    cancelBtn.removeEventListener('click', onCancel);
+    confirmBtn.removeEventListener('click', onOk);
+    overlay.removeEventListener('click', onBackdrop);
+  }
+  function onCancel(){ close(); }
+  function onOk(){ close(); onConfirm(); }
+  function onBackdrop(e){ if(e.target === overlay) close(); }
+
+  cancelBtn.addEventListener('click', onCancel);
+  confirmBtn.addEventListener('click', onOk);
+  overlay.addEventListener('click', onBackdrop);
+}
+
+// ─────────────────── INIT ───────────────────
+(function init(){
+  loadDB();
+  applyTheme(db.settings.theme);
+  document.documentElement.lang = db.settings.language || 'en';
+
+  // Restore view from instance state
+  const restored = restoreInstanceView();
+  if(restored && NAV_ITEMS.some(n=>n.id===restored)){
+    currentView = restored;
+  }
+
+  buildNav();
+  renderMainContent();
+})();
+</script>
+</body>
+</html>
