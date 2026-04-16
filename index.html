@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stock Manager</title>
+<title>STOCKD</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -190,13 +190,30 @@ a:hover { text-decoration: underline; }
   margin: 0 auto;
 }
 .view-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 8px;
+  min-height: 36px;
+}
+/* Right-side button groups need their own column sizing */
+.view-header > div.flex-row,
+.view-header > button.btn {
+  justify-self: end;
+  grid-column: 3;
+}
+/* When right side has many buttons, let it grow */
+.view-header.wide-right {
+  grid-template-columns: 40px 1fr auto;
 }
 .view-title {
-  font-size: 20px; font-weight: 700;
+  font-size: 18px; font-weight: 700;
   font-family: 'Space Mono', monospace;
   color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+  grid-column: 2;
 }
 
 /* ═══════════════════════════════════════════
@@ -1123,7 +1140,7 @@ function renderHome() {
   <div class="home-screen">
     <div class="home-brand">
       <span class="home-brand-icon">◈</span>
-      <span class="home-brand-name">STOCK MGR</span>
+      <span class="home-brand-name">STOCKD</span>
     </div>
     <div class="home-subtitle">${subtitle}</div>
     <div class="home-grid">
@@ -1857,7 +1874,7 @@ function renderGraphs() {
   const app = document.getElementById('app');
   app.innerHTML = `
   <div class="view">
-    <div class="view-header"><span class="view-title">${t('graphs.title')}</span></div>
+    <div class="view-header"><span class="view-title">${t("graphs.title")}</span><span></span></div>
     <div class="charts-grid">
       <div class="chart-card"><div class="chart-title">${t('graphs.allocByStock')}</div><div class="chart-canvas-wrap"><canvas id="c-alloc-stock"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">${t('graphs.allocByCat')}</div><div class="chart-canvas-wrap"><canvas id="c-alloc-cat"></canvas></div></div>
@@ -2242,7 +2259,7 @@ function renderPlaybook() {
   const app = document.getElementById('app');
   app.innerHTML = `
   <div class="view">
-    <div class="view-header"><span class="view-title">${t('playbook.title')}</span></div>
+    <div class="view-header"><span class="view-title">${t("playbook.title")}</span><span></span></div>
     <div class="tabs">
       <button class="tab-btn ${playbookTab==='principles'?'active':''}" data-tab="principles">${t('playbook.principles')}</button>
       <button class="tab-btn ${playbookTab==='goals'?'active':''}" data-tab="goals">${t('playbook.goals')}</button>
@@ -2460,13 +2477,13 @@ function renderMydb() {
   <div class="view">
     <div class="view-header">
       <span class="view-title">${t('mydb.title')}</span>
-      <div class="flex-row">
-        <button class="btn btn-secondary btn-sm" data-action="export-xlsx">${t('mydb.exportXlsx')}</button>
-        <button class="btn btn-secondary btn-sm" data-action="export-json">${t('mydb.exportJson')}</button>
-        <button class="btn btn-secondary btn-sm" data-action="import-json">${t('mydb.importJson')}</button>
-        <button class="btn btn-primary btn-sm"   data-action="add-stock">${t('dashboard.addStock')}</button>
-        <input type="file" id="import-file" accept=".json" style="display:none">
-      </div>
+      <button class="btn btn-primary btn-sm" data-action="add-stock">${t('dashboard.addStock')}</button>
+    </div>
+    <div class="flex-row mb-12">
+      <button class="btn btn-secondary btn-sm" data-action="export-xlsx">${t('mydb.exportXlsx')}</button>
+      <button class="btn btn-secondary btn-sm" data-action="export-json">${t('mydb.exportJson')}</button>
+      <button class="btn btn-secondary btn-sm" data-action="import-json">${t('mydb.importJson')}</button>
+      <input type="file" id="import-file" accept=".json" style="display:none">
     </div>
     <div class="tabs">
       <button class="tab-btn ${mydbTab==='stocks'?'active':''}" data-tab="stocks">${t('mydb.stocks')} (${db.stocks.length})</button>
@@ -2601,14 +2618,14 @@ function exportExcel() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(newsRows.length?newsRows:[{note:'No news'}]), 'News');
   const ruleRows=db.rules.map(r=>({Name:r.name,Active:r.active,Metric:r.condition.metric,Operator:r.condition.operator,Value:r.condition.value,'Target Stock':r.condition.stockId?db.stocks.find(s=>s.id===r.condition.stockId)?.name||'?':'All',Message:r.message}));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ruleRows.length?ruleRows:[{note:'No rules'}]), 'Rules');
-  XLSX.writeFile(wb, 'stockmanager_backup.xlsx');
+  XLSX.writeFile(wb, 'stockd_backup.xlsx');
   toast(t('common.excelExported'), 'success');
 }
 
 function exportJSON() {
   const blob = new Blob([JSON.stringify(db, null, 2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = 'stockmanager_backup.json'; a.click();
+  a.download = 'stockd_backup.json'; a.click();
   toast(t('common.jsonExported'), 'success');
 }
 
@@ -2620,7 +2637,7 @@ function renderSettings() {
   const app = document.getElementById('app');
   app.innerHTML = `
   <div class="view">
-    <div class="view-header"><span class="view-title">${t('settings.title')}</span></div>
+    <div class="view-header"><span class="view-title">${t("settings.title")}</span><span></span></div>
 
     <div class="settings-section">
       <div class="settings-section-title">${t('settings.display')}</div>
