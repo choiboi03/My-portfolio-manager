@@ -1661,12 +1661,19 @@ function openAddStockModal(prefill = {}) {
           <div style="font-weight:700;color:var(--alert);margin-bottom:6px">
             ${isKo ? '한국 주식 검색 방법' : 'How to search Korean stocks'}
           </div>
-          <div style="color:var(--text2);line-height:1.7">
+          <div style="color:var(--text2);line-height:1.7;margin-bottom:10px">
             ${isKo
               ? `① 영문명으로 검색 → <b>Samsung</b>, <b>Kakao</b>, <b>Hyundai</b><br>② 종목코드(6자리)로 검색 → <b>005930</b>, <b>035720</b>, <b>000660</b>`
               : `① Search in English → <b>Samsung</b>, <b>Kakao</b>, <b>Hyundai</b><br>② Search by stock code (6 digits) → <b>005930</b>, <b>035720</b>`}
           </div>
+          <button class="btn btn-secondary btn-sm" id="manual-entry-btn" style="width:100%">
+            ${isKo ? '✏ 그래도 직접 입력하기' : '✏ Enter manually instead'}
+          </button>
         </div>`;
+      wrap.querySelector('#manual-entry-btn').addEventListener('click', () => {
+        showForm({ symbol: q, shortname: q, exchange: '' });
+        wrap.innerHTML = '';
+      });
       return;
     }
 
@@ -1778,7 +1785,7 @@ function recalcStock(stockId) {
 
 function defaultFrom() {
   const d = new Date();
-  d.setFullYear(d.getFullYear() - 1);
+  d.setMonth(d.getMonth() - 1);
   return d.toISOString().slice(0, 10);
 }
 let tlFilter = { stockId:'all', type:'all', from:defaultFrom(), to:today() };
@@ -1870,7 +1877,7 @@ function openTradeModal(prefillStockId = null) {
       </div>
       <div class="form-group">
         <label class="form-label">${t('trade.date')}</label>
-        <input class="form-input" id="tm-date" type="date" value="${today()}">
+        <input class="form-input" id="tm-date" type="date" value="${today()}" style="width:100%;display:block">
       </div>
       <div class="form-group">
         <label class="form-label">${t('trade.type')}</label>
@@ -1886,7 +1893,10 @@ function openTradeModal(prefillStockId = null) {
         </div>
         <div class="form-group">
           <label class="form-label">${t('trade.price')}</label>
-          <input class="form-input mono" id="tm-price" type="number" min="0" step="any" placeholder="0">
+          <div class="input-unit-wrap">
+            <input class="form-input mono" id="tm-price" type="number" min="0" step="any" placeholder="0">
+            <span class="input-unit" id="tm-unit">—</span>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -1913,14 +1923,21 @@ function openTradeModal(prefillStockId = null) {
     });
   }));
 
-  // Auto-fill price from currentPrice
+  function updateTradeUnit(stockId) {
+    const s = db.stocks.find(x => x.id === stockId);
+    const unit = overlay.querySelector('#tm-unit');
+    if (unit) unit.textContent = s ? (s.currency === 'KRW' ? '₩' : '$') : '—';
+  }
+
   overlay.querySelector('#tm-stock').addEventListener('change', e => {
     const s = db.stocks.find(x=>x.id===e.target.value);
     if (s?.currentPrice) overlay.querySelector('#tm-price').value = s.currentPrice;
+    updateTradeUnit(e.target.value);
   });
   if (prefillStockId) {
     const s = db.stocks.find(x=>x.id===prefillStockId);
     if (s?.currentPrice) overlay.querySelector('#tm-price').value = s.currentPrice;
+    updateTradeUnit(prefillStockId);
   }
 
   overlay.querySelector('#tm-save').onclick = () => {
