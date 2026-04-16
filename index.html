@@ -933,13 +933,13 @@ function seedIfEmpty() {
 
   if (db.stocks.length === 0) {
     db.stocks = isKo ? [
-      { id:uid(), ticker:'NVDA',   name:'NVIDIA',    exchange:'US', currency:'USD', holdings:10,  avgPrice:110,   category:'AI·반도체', account:'해외위탁', currentPrice:null, priceUpdatedAt:null, memo:'핵심 AI 보유' },
-      { id:uid(), ticker:'005930', name:'삼성전자',  exchange:'KR', currency:'KRW', holdings:50,  avgPrice:71000, category:'AI·반도체', account:'ISA',     currentPrice:null, priceUpdatedAt:null, memo:'' },
-      { id:uid(), ticker:'RKLB',   name:'Rocket Lab',exchange:'US', currency:'USD', holdings:100, avgPrice:8.5,   category:'방산·우주', account:'해외위탁', currentPrice:null, priceUpdatedAt:null, memo:'우주 인프라' }
+      { id:uid(), ticker:'NVDA',   name:'엔비디아',   exchange:'US', currency:'USD', holdings:15,  avgPrice:480,   category:'AI·반도체', account:'해외위탁', currentPrice:null, priceUpdatedAt:null, memo:'AI 반도체 핵심 보유' },
+      { id:uid(), ticker:'005930', name:'삼성전자',   exchange:'KR', currency:'KRW', holdings:200, avgPrice:68000, category:'AI·반도체', account:'ISA',     currentPrice:null, priceUpdatedAt:null, memo:'장기 분할매수' },
+      { id:uid(), ticker:'AAPL',   name:'애플',       exchange:'US', currency:'USD', holdings:20,  avgPrice:165,   category:'소비재',    account:'해외위탁', currentPrice:null, priceUpdatedAt:null, memo:'배당 + 성장' }
     ] : [
-      { id:uid(), ticker:'NVDA',   name:'NVIDIA',    exchange:'US', currency:'USD', holdings:10,  avgPrice:110,   category:'AI·Semiconductors',  account:'International Brokerage', currentPrice:null, priceUpdatedAt:null, memo:'Core AI holding' },
-      { id:uid(), ticker:'005930', name:'Samsung Electronics', exchange:'KR', currency:'KRW', holdings:50, avgPrice:71000, category:'AI·Semiconductors', account:'General', currentPrice:null, priceUpdatedAt:null, memo:'' },
-      { id:uid(), ticker:'RKLB',   name:'Rocket Lab',exchange:'US', currency:'USD', holdings:100, avgPrice:8.5,   category:'Defense·Space', account:'International Brokerage', currentPrice:null, priceUpdatedAt:null, memo:'Space infra play' }
+      { id:uid(), ticker:'NVDA',   name:'NVIDIA',          exchange:'US', currency:'USD', holdings:15,  avgPrice:480,   category:'AI·Semiconductors', account:'International Brokerage', currentPrice:null, priceUpdatedAt:null, memo:'Core AI holding' },
+      { id:uid(), ticker:'005930', name:'Samsung Electronics', exchange:'KR', currency:'KRW', holdings:200, avgPrice:68000, category:'AI·Semiconductors', account:'General', currentPrice:null, priceUpdatedAt:null, memo:'Long-term DCA' },
+      { id:uid(), ticker:'AAPL',   name:'Apple',           exchange:'US', currency:'USD', holdings:20,  avgPrice:165,   category:'Consumer',          account:'International Brokerage', currentPrice:null, priceUpdatedAt:null, memo:'Dividend + growth' }
     ];
   }
   if (db.rules.length === 0) {
@@ -3086,8 +3086,8 @@ const ONBOARD_CONTENT = {
       { icon:'⚡', title:'My Rule', desc:'Set alerts — get notified when profit or allocation thresholds are hit' },
     ],
     dataTitle: 'Start with sample data or fresh?',
-    dataSample: { icon:'📊', title:'Sample data', desc:'3 example stocks so you can explore right away' },
-    dataFresh:  { icon:'✦', title:'Start fresh', desc:'Clean slate — add your own stocks from the beginning' },
+    dataSample: { icon:'📊', title:'Sample data', desc:'NVIDIA · Samsung · Apple — explore the app right away' },
+    dataFresh:  { icon:'✦', title:'Start fresh', desc:'Go to My DB → + Add Stock to add your own holdings' },
     next: 'Next →',
     getStarted: 'Get Started',
   },
@@ -3103,8 +3103,8 @@ const ONBOARD_CONTENT = {
       { icon:'⚡', title:'내 규칙', desc:'수익률·비중 기준 설정 → 조건 충족 시 알림' },
     ],
     dataTitle: '샘플 데이터로 시작할까요?',
-    dataSample: { icon:'📊', title:'샘플 데이터', desc:'예시 종목 3개로 앱을 바로 탐색해보세요' },
-    dataFresh:  { icon:'✦', title:'빈 화면으로', desc:'직접 종목을 추가하며 시작합니다' },
+    dataSample: { icon:'📊', title:'샘플 데이터', desc:'엔비디아 · 삼성전자 · 애플로 앱을 바로 탐색해보세요' },
+    dataFresh:  { icon:'✦', title:'빈 화면으로', desc:'내DB → + 종목추가 에서 직접 종목을 추가해보세요' },
     next: '다음 →',
     getStarted: '시작하기',
   }
