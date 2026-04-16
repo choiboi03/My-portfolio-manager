@@ -745,14 +745,24 @@ const _sid = new URLSearchParams(window.location.search).get('stackd_id');
 const DATA_KEY     = 'stockmanager_data';
 const INSTANCE_KEY = _sid ? `stockmanager_instance_${_sid}` : null;
 
-const PRESET_ACCOUNTS    = ['ISA','연금(IRP)','일반','해외위탁','기타'];
-const PRESET_CATEGORIES  = ['AI·반도체','에너지·인프라','방산·우주','바이오·헬스','금융','소비재','ETF','현금성','기타'];
+const PRESETS = {
+  en: {
+    accounts:    ['ISA', 'Pension(IRP)', 'General', 'International Brokerage', 'Other'],
+    categories:  ['AI·Semiconductors', 'Energy·Infrastructure', 'Defense·Space', 'Bio·Health', 'Finance', 'Consumer', 'ETF', 'Cash', 'Other']
+  },
+  ko: {
+    accounts:    ['ISA', '연금(IRP)', '일반', '해외위탁', '기타'],
+    categories:  ['AI·반도체', '에너지·인프라', '방산·우주', '바이오·헬스', '금융', '소비재', 'ETF', '현금성', '기타']
+  }
+};
+function getPresetAccounts()    { return PRESETS[db.settings?.language||'en'].accounts; }
+function getPresetCategories()  { return PRESETS[db.settings?.language||'en'].categories; }
 
 const DEFAULT_DB = {
   stocks: [], trades: [], news: [], rules: [],
   playbook: { principles: [], goals: [], watchlist: [] },
   exchangeRate: { USDKRW: 1380, updatedAt: null },
-  settings: { theme:'light', language:'en', currency:'USD', customAccounts:[], customCategories:[] }
+  settings: { theme:'light', language:'en', currency:'USD', customAccounts:[], customCategories:[], deletedAccounts:[], deletedCategories:[] }
 };
 
 let db = {};
@@ -773,28 +783,48 @@ function saveView(v) { if (INSTANCE_KEY) localStorage.setItem(INSTANCE_KEY, v); 
 function loadView()  { return (INSTANCE_KEY ? localStorage.getItem(INSTANCE_KEY) : null) || 'dashboard'; }
 
 function seedIfEmpty() {
+  // Ensure deletedAccounts/deletedCategories exist on older saves
+  if (!db.settings.deletedAccounts)  db.settings.deletedAccounts  = [];
+  if (!db.settings.deletedCategories) db.settings.deletedCategories = [];
+
+  const isKo = db.settings.language === 'ko';
+
   if (db.stocks.length === 0) {
-    db.stocks = [
-      { id:uid(), ticker:'NVDA',   name:'NVIDIA',      exchange:'US', currency:'USD', holdings:10,  avgPrice:110,   category:'AI·반도체', account:'해외위탁', currentPrice:null, priceUpdatedAt:null, memo:'Core AI holding' },
-      { id:uid(), ticker:'005930', name:'삼성전자',    exchange:'KR', currency:'KRW', holdings:50,  avgPrice:71000, category:'AI·반도체', account:'ISA',     currentPrice:null, priceUpdatedAt:null, memo:'' },
-      { id:uid(), ticker:'RKLB',   name:'Rocket Lab',  exchange:'US', currency:'USD', holdings:100, avgPrice:8.5,   category:'방산·우주', account:'해외위탁', currentPrice:null, priceUpdatedAt:null, memo:'Space infra play' }
+    db.stocks = isKo ? [
+      { id:uid(), ticker:'NVDA',   name:'NVIDIA',    exchange:'US', currency:'USD', holdings:10,  avgPrice:110,   category:'AI·반도체', account:'해외위탁', currentPrice:null, priceUpdatedAt:null, memo:'핵심 AI 보유' },
+      { id:uid(), ticker:'005930', name:'삼성전자',  exchange:'KR', currency:'KRW', holdings:50,  avgPrice:71000, category:'AI·반도체', account:'ISA',     currentPrice:null, priceUpdatedAt:null, memo:'' },
+      { id:uid(), ticker:'RKLB',   name:'Rocket Lab',exchange:'US', currency:'USD', holdings:100, avgPrice:8.5,   category:'방산·우주', account:'해외위탁', currentPrice:null, priceUpdatedAt:null, memo:'우주 인프라' }
+    ] : [
+      { id:uid(), ticker:'NVDA',   name:'NVIDIA',    exchange:'US', currency:'USD', holdings:10,  avgPrice:110,   category:'AI·Semiconductors',  account:'International Brokerage', currentPrice:null, priceUpdatedAt:null, memo:'Core AI holding' },
+      { id:uid(), ticker:'005930', name:'Samsung Electronics', exchange:'KR', currency:'KRW', holdings:50, avgPrice:71000, category:'AI·Semiconductors', account:'General', currentPrice:null, priceUpdatedAt:null, memo:'' },
+      { id:uid(), ticker:'RKLB',   name:'Rocket Lab',exchange:'US', currency:'USD', holdings:100, avgPrice:8.5,   category:'Defense·Space', account:'International Brokerage', currentPrice:null, priceUpdatedAt:null, memo:'Space infra play' }
     ];
   }
   if (db.rules.length === 0) {
-    db.rules = [
-      { id:uid(), name:'수익 실현 검토',  active:true, condition:{ metric:'profitRate', operator:'gte', value:20, stockId:null }, message:'Consider taking profits on this position' },
-      { id:uid(), name:'비중 과집중 경고',active:true, condition:{ metric:'allocation', operator:'gte', value:30, stockId:null }, message:'Single stock over 30% — rebalancing recommended' },
-      { id:uid(), name:'손절선 도달',     active:true, condition:{ metric:'lossRate',   operator:'gte', value:10, stockId:null }, message:'Stop-loss threshold reached' }
+    db.rules = isKo ? [
+      { id:uid(), name:'수익 실현 검토',   active:true, condition:{ metric:'profitRate', operator:'gte', value:20, stockId:null }, message:'수익률 20% 달성 — 매도 검토' },
+      { id:uid(), name:'비중 과집중 경고', active:true, condition:{ metric:'allocation', operator:'gte', value:30, stockId:null }, message:'단일 종목 30% 초과 — 리밸런싱 권장' },
+      { id:uid(), name:'손절선 도달',      active:true, condition:{ metric:'lossRate',   operator:'gte', value:10, stockId:null }, message:'손절 기준 -10% 도달' }
+    ] : [
+      { id:uid(), name:'Take Profit Review',  active:true, condition:{ metric:'profitRate', operator:'gte', value:20, stockId:null }, message:'Profit rate hit 20% — consider taking profits' },
+      { id:uid(), name:'Concentration Alert', active:true, condition:{ metric:'allocation', operator:'gte', value:30, stockId:null }, message:'Single stock over 30% — rebalancing recommended' },
+      { id:uid(), name:'Stop-Loss Reached',   active:true, condition:{ metric:'lossRate',   operator:'gte', value:10, stockId:null }, message:'Loss threshold -10% reached' }
     ];
   }
   if (db.playbook.principles.length === 0) {
-    db.playbook.principles = [
+    db.playbook.principles = isKo ? [
       { id:uid(), text:'절대 레버리지 금지' },
       { id:uid(), text:'AI 인프라 중심 포트폴리오 유지' },
       { id:uid(), text:'손절 -10%, 익절 +20% 기준 리뷰' }
+    ] : [
+      { id:uid(), text:'Never use leverage' },
+      { id:uid(), text:'Stay concentrated in AI infrastructure' },
+      { id:uid(), text:'Review at -10% stop-loss and +20% take-profit' }
     ];
-    db.playbook.goals = [
-      { id:uid(), label:'5년 2.5x 목표', targetMultiple:2.5, deadline:'2029-12-31', memo:'Primary growth target' }
+    db.playbook.goals = isKo ? [
+      { id:uid(), label:'5년 2.5x 목표', targetMultiple:2.5, deadline:'2029-12-31', memo:'주요 성장 목표' }
+    ] : [
+      { id:uid(), label:'5-Year 2.5x Target', targetMultiple:2.5, deadline:'2029-12-31', memo:'Primary growth target' }
     ];
   }
   saveDB();
@@ -836,8 +866,18 @@ function t(path) {
 /* ═══════════════════════════════════════════════════════════
    SECTION 3 — COMPUTED / DERIVED HELPERS
 ═══════════════════════════════════════════════════════════ */
-function getAccounts()   { return [...PRESET_ACCOUNTS, ...db.settings.customAccounts]; }
-function getCategories() { return [...PRESET_CATEGORIES, ...db.settings.customCategories]; }
+function getAccounts() {
+  const s = db.settings;
+  const deleted = s.deletedAccounts || [];
+  const active  = getPresetAccounts().filter(a => !deleted.includes(a));
+  return [...active, ...(s.customAccounts || [])];
+}
+function getCategories() {
+  const s = db.settings;
+  const deleted = s.deletedCategories || [];
+  const active  = getPresetCategories().filter(c => !deleted.includes(c));
+  return [...active, ...(s.customCategories || [])];
+}
 
 function toKRW(value, currency) {
   if (currency === 'USD') return value * db.exchangeRate.USDKRW;
@@ -2396,11 +2436,21 @@ function renderSettings() {
     <div class="settings-section">
       <div class="settings-section-title">${t('settings.accounts')}</div>
       <div class="flex-row flex-wrap gap-4 mb-12">
-        ${PRESET_ACCOUNTS.map(a=>`<span class="tag-pill" style="opacity:0.5;cursor:default">${a}</span>`).join('')}
-        ${s.customAccounts.map(a=>`<span class="tag-pill" style="background:var(--surface2);color:var(--text)">${a} <button data-del-acc="${a}" style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px">✕</button></span>`).join('')}
+        ${getPresetAccounts().map(a => {
+          const deleted = (s.deletedAccounts||[]).includes(a);
+          return deleted ? '' :
+            `<span class="tag-pill" style="background:var(--surface2);color:var(--text2)">${a}
+              <button data-del-preset-acc="${a}" style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px">✕</button>
+            </span>`;
+        }).join('')}
+        ${(s.customAccounts||[]).map(a =>
+          `<span class="tag-pill" style="background:var(--accent-dim);color:var(--accent)">${a}
+            <button data-del-acc="${a}" style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--accent);font-size:12px">✕</button>
+          </span>`
+        ).join('')}
       </div>
       <div class="flex-row">
-        <input class="form-input" id="new-account" placeholder="New account name" style="max-width:200px">
+        <input class="form-input" id="new-account" placeholder="${db.settings.language==='ko'?'새 계좌명':'New account name'}" style="max-width:200px">
         <button class="btn btn-secondary btn-sm" data-action="add-account">${t('settings.addCustom')}</button>
       </div>
     </div>
@@ -2408,11 +2458,21 @@ function renderSettings() {
     <div class="settings-section">
       <div class="settings-section-title">${t('settings.categories')}</div>
       <div class="flex-row flex-wrap gap-4 mb-12">
-        ${PRESET_CATEGORIES.map(c=>`<span class="tag-pill" style="opacity:0.5;cursor:default">${c}</span>`).join('')}
-        ${s.customCategories.map(c=>`<span class="tag-pill" style="background:var(--surface2);color:var(--text)">${c} <button data-del-cat="${c}" style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px">✕</button></span>`).join('')}
+        ${getPresetCategories().map(c => {
+          const deleted = (s.deletedCategories||[]).includes(c);
+          return deleted ? '' :
+            `<span class="tag-pill" style="background:var(--surface2);color:var(--text2)">${c}
+              <button data-del-preset-cat="${c}" style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px">✕</button>
+            </span>`;
+        }).join('')}
+        ${(s.customCategories||[]).map(c =>
+          `<span class="tag-pill" style="background:var(--accent-dim);color:var(--accent)">${c}
+            <button data-del-cat="${c}" style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--accent);font-size:12px">✕</button>
+          </span>`
+        ).join('')}
       </div>
       <div class="flex-row">
-        <input class="form-input" id="new-category" placeholder="New category name" style="max-width:200px">
+        <input class="form-input" id="new-category" placeholder="${db.settings.language==='ko'?'새 카테고리명':'New category name'}" style="max-width:200px">
         <button class="btn btn-secondary btn-sm" data-action="add-category">${t('settings.addCustom')}</button>
       </div>
     </div>
@@ -2429,10 +2489,17 @@ function renderSettings() {
   </div>`;
 
   app.querySelectorAll('[data-theme]').forEach(b=>b.addEventListener('click',()=>{db.settings.theme=b.dataset.theme;document.body.setAttribute('data-theme',b.dataset.theme);saveDB();renderSettings();}));
-  app.querySelectorAll('[data-lang]').forEach(b=>b.addEventListener('click',()=>{db.settings.language=b.dataset.lang;saveDB();navigate('home');}));
+  app.querySelectorAll('[data-lang]').forEach(b=>b.addEventListener('click',()=>{
+    db.settings.language=b.dataset.lang;
+    db.settings.deletedAccounts=[];
+    db.settings.deletedCategories=[];
+    saveDB();navigate('home');
+  }));
   app.querySelectorAll('[data-curr]').forEach(b=>b.addEventListener('click',()=>{db.settings.currency=b.dataset.curr;saveDB();renderSettings();}));
   app.querySelector('[data-action="add-account"]').addEventListener('click',()=>{const v=app.querySelector('#new-account').value.trim();if(!v)return;if(!db.settings.customAccounts.includes(v))db.settings.customAccounts.push(v);saveDB();renderSettings();});
   app.querySelector('[data-action="add-category"]').addEventListener('click',()=>{const v=app.querySelector('#new-category').value.trim();if(!v)return;if(!db.settings.customCategories.includes(v))db.settings.customCategories.push(v);saveDB();renderSettings();});
+  app.querySelectorAll('[data-del-preset-acc]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();if(!db.settings.deletedAccounts)db.settings.deletedAccounts=[];db.settings.deletedAccounts.push(b.dataset.delPresetAcc);saveDB();renderSettings();}));
+  app.querySelectorAll('[data-del-preset-cat]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();if(!db.settings.deletedCategories)db.settings.deletedCategories=[];db.settings.deletedCategories.push(b.dataset.delPresetCat);saveDB();renderSettings();}));
   app.querySelectorAll('[data-del-acc]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();db.settings.customAccounts=db.settings.customAccounts.filter(x=>x!==b.dataset.delAcc);saveDB();renderSettings();}));
   app.querySelectorAll('[data-del-cat]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();db.settings.customCategories=db.settings.customCategories.filter(x=>x!==b.dataset.delCat);saveDB();renderSettings();}));
   app.querySelector('[data-action="exp-json"]').addEventListener('click',exportJSON);
