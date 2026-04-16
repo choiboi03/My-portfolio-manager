@@ -908,6 +908,7 @@ const DEFAULT_DB = {
   stocks: [], trades: [], news: [], rules: [],
   playbook: { principles: [], goals: [], watchlist: [] },
   exchangeRate: { USDKRW: 1380, updatedAt: null },
+  cashBalances: {},  // { [accountName]: { amount: number, currency: 'KRW'|'USD' } }
   settings: { theme:'light', language:'en', currency:'USD', customAccounts:[], customCategories:[], deletedAccounts:[], deletedCategories:[], onboarded:false }
 };
 
@@ -920,6 +921,7 @@ function uid() { return crypto.randomUUID(); }
 function loadDB() {
   try { db = JSON.parse(localStorage.getItem(DATA_KEY) || 'null') || deepClone(DEFAULT_DB); }
   catch(e) { db = deepClone(DEFAULT_DB); }
+  if (!db.cashBalances) db.cashBalances = {};
 }
 function saveDB() {
   clearTimeout(saveTimer);
@@ -984,7 +986,8 @@ const i18n = {
     nav: { dashboard:'Dashboard', graphs:'Graphs', tradelog:'Trade Log', news:'News', myrule:'My Rule', playbook:'Playbook', mydb:'My DB', settings:'Settings' },
     dashboard: { title:'Dashboard', addStock:'+ Add Stock', refreshPrices:'↻ Refresh Prices', totalValue:'Total Value', totalPL:'Total P&L', numHoldings:'Holdings', usdkrw:'USD / KRW',
       allAccounts:'All Accounts', allCategories:'All Categories', allMarkets:'All Markets', usOnly:'US Only', krOnly:'KR Only', loading:'↻ Loading...',
-      emptyState:'No stocks yet. Go to My DB → + Add Stock to get started.' },
+      emptyState:'No stocks yet. Go to My DB → + Add Stock to get started.',
+      totalCash:'Cash (예수금)', cashLabel:'Cash' },
     cols: { name:'Name', ticker:'Ticker', account:'Account', category:'Category', shares:'Shares', avgPrice:'Avg Price', curPrice:'Cur Price', pl:'P&L', plPct:'P&L %', alloc:'Alloc %' },
     trade: { title:'Trade Log', recordTrade:'+ Record Trade', date:'Date', stock:'Stock', type:'Type', qty:'Qty', price:'Price/Share', total:'Total', memo:'Memo', buy:'Buy', sell:'Sell',
       noTrades:'No trades recorded yet.', allStocks:'All Stocks', allTypes:'All', deleteConfirm:'Delete this trade?' },
@@ -1006,7 +1009,8 @@ const i18n = {
       noData:'No price data available', tooltipAlloc:'Allocation', tooltipValue:'Value', tooltipPnl:'P&L' },
     settings: { title:'Settings', display:'Display', theme:'Theme', light:'Light', dark:'Dark', language:'Language', currency:'Currency for USD stocks',
       accounts:'Accounts', categories:'Categories', data:'Data', exportJson:'Export JSON', importJson:'Import JSON', reset:'Reset All Data',
-      resetConfirm:'Delete ALL data? This cannot be undone.', usd:'USD', krw:'KRW (₩)', addCustom:'+ Add', save:'Save', cancel:'Cancel', close:'Close' },
+      resetConfirm:'Delete ALL data? This cannot be undone.', usd:'USD', krw:'KRW (₩)', addCustom:'+ Add', save:'Save', cancel:'Cancel', close:'Close',
+      cash:'Cash Balance (예수금)', cashDesc:'Enter available cash per account', cashCurrency:'Currency' },
     common: { edit:'Edit', delete:'Delete', confirm:'Confirm', close:'Close', buy:'Buy', sell:'Sell', memo:'Memo', date:'Date', add:'Add', save:'Save', cancel:'Cancel',
       name:'Name', search:'Search ticker or company name', na:'--', selectStock:'-- Select --', initialPosition:'Initial position',
       insufficientHoldings:'Insufficient holdings', invalidQty:'Invalid quantity', invalidPrice:'Invalid price', selectStockError:'Select a stock',
@@ -1022,7 +1026,8 @@ const i18n = {
     nav: { dashboard:'대시보드', graphs:'그래프', tradelog:'매매일지', news:'뉴스', myrule:'내규칙', playbook:'플레이북', mydb:'내DB', settings:'설정' },
     dashboard: { title:'대시보드', addStock:'+ 종목추가', refreshPrices:'↻ 가격갱신', totalValue:'총 평가금액', totalPL:'총 손익', numHoldings:'보유종목', usdkrw:'달러환율',
       allAccounts:'전체 계좌', allCategories:'전체 카테고리', allMarkets:'전체 시장', usOnly:'미국장', krOnly:'한국장', loading:'↻ 불러오는 중...',
-      emptyState:'종목이 없습니다. 내DB → + 종목추가 에서 추가해보세요.' },
+      emptyState:'종목이 없습니다. 내DB → + 종목추가 에서 추가해보세요.',
+      totalCash:'예수금', cashLabel:'예수금' },
     cols: { name:'종목명', ticker:'티커', account:'계좌', category:'카테고리', shares:'보유량', avgPrice:'평단가', curPrice:'현재가', pl:'수익금', plPct:'수익률%', alloc:'비중%' },
     trade: { title:'매매일지', recordTrade:'+ 매매기록', date:'날짜', stock:'종목', type:'구분', qty:'수량', price:'주당가격', total:'합계', memo:'메모', buy:'매수', sell:'매도',
       noTrades:'매매 기록이 없습니다.', allStocks:'전체 종목', allTypes:'전체', deleteConfirm:'이 매매 기록을 삭제할까요?' },
@@ -1044,7 +1049,8 @@ const i18n = {
       noData:'가격 데이터 없음', tooltipAlloc:'비중', tooltipValue:'평가금액', tooltipPnl:'손익' },
     settings: { title:'설정', display:'화면', theme:'테마', light:'라이트', dark:'다크', language:'언어', currency:'달러종목 표시 통화',
       accounts:'계좌', categories:'카테고리', data:'데이터', exportJson:'JSON 내보내기', importJson:'JSON 가져오기', reset:'전체 초기화',
-      resetConfirm:'모든 데이터가 삭제됩니다. 되돌릴 수 없습니다.', usd:'달러(USD)', krw:'원화(₩)', addCustom:'+ 추가', save:'저장', cancel:'취소', close:'닫기' },
+      resetConfirm:'모든 데이터가 삭제됩니다. 되돌릴 수 없습니다.', usd:'달러(USD)', krw:'원화(₩)', addCustom:'+ 추가', save:'저장', cancel:'취소', close:'닫기',
+      cash:'예수금', cashDesc:'계좌별 보유 현금을 입력하세요', cashCurrency:'통화' },
     common: { edit:'수정', delete:'삭제', confirm:'확인', close:'닫기', buy:'매수', sell:'매도', memo:'메모', date:'날짜', add:'추가', save:'저장', cancel:'취소',
       name:'이름', search:'티커 또는 종목명 검색', na:'--', selectStock:'-- 선택 --', initialPosition:'초기 매수',
       insufficientHoldings:'보유량이 부족합니다', invalidQty:'수량이 올바르지 않습니다', invalidPrice:'가격이 올바르지 않습니다', selectStockError:'종목을 선택하세요',
@@ -1089,12 +1095,20 @@ function calcStock(s) {
   const pr  = (pa != null && ia > 0) ? (pa / ia) * 100 : null;
   return { ...s, currentValue:cv, investedAmount:ia, profitAmount:pa, profitRate:pr };
 }
+function totalCashKRW() {
+  if (!db.cashBalances) return 0;
+  return Object.values(db.cashBalances).reduce((sum, c) => {
+    if (!c || !c.amount) return sum;
+    return sum + toKRW(c.amount, c.currency || 'KRW');
+  }, 0);
+}
 function totalPortfolioValue() {
-  return db.stocks.reduce((sum, s) => {
+  const stocksVal = db.stocks.reduce((sum, s) => {
     const cp = s.currentPrice;
     if (cp == null || s.holdings <= 0) return sum;
     return sum + toKRW(s.holdings * cp, s.currency);
   }, 0);
+  return stocksVal + totalCashKRW();
 }
 function totalInvestedValue() {
   return db.trades
@@ -1403,6 +1417,8 @@ function renderDashboard() {
   const rate = db.exchangeRate.USDKRW;
   const totalPLpct = total > 0 ? (totalPL / (total - totalPL)) * 100 : null;
 
+  const cash = totalCashKRW();
+
   const app = document.getElementById('app');
   app.innerHTML = `
   <div class="view">
@@ -1424,8 +1440,9 @@ function renderDashboard() {
         <div class="stat-sub ${plClass(totalPLpct)}">${totalPLpct != null ? formatPct(totalPLpct) : ''}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">${t('dashboard.numHoldings')}</div>
-        <div class="stat-value mono">${numH}</div>
+        <div class="stat-label">${t('dashboard.totalCash')}</div>
+        <div class="stat-value">${cash > 0 ? formatKRW(cash) : '--'}</div>
+        <div class="stat-sub text-muted" style="font-size:10px">${t('settings.cash')}</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">${t('dashboard.usdkrw')}</div>
@@ -2199,16 +2216,28 @@ function initCharts() {
 
   // 1. Allocation by stock
   const activeStocks = db.stocks.filter(s => s.holdings > 0 && s.currentPrice != null);
-  mkDonut('c-alloc-stock', activeStocks.map(s=>s.name), activeStocks.map(s=>toKRW(s.holdings*s.currentPrice,s.currency)));
+  const cashLabel = t('dashboard.cashLabel');
 
-  // 2. Allocation by category
+  // Build cash data for charts
+  const cashEntries = Object.entries(db.cashBalances||{}).filter(([,c])=>c&&c.amount>0);
+  const totalCashVal = cashEntries.reduce((s,[,c])=>s+toKRW(c.amount,c.currency||'KRW'),0);
+
+  // 1. Allocation by stock (cash as single "현금/Cash" slice)
+  const stockLabels = activeStocks.map(s=>s.name);
+  const stockVals   = activeStocks.map(s=>toKRW(s.holdings*s.currentPrice,s.currency));
+  if (totalCashVal > 0) { stockLabels.push(cashLabel); stockVals.push(totalCashVal); }
+  mkDonut('c-alloc-stock', stockLabels, stockVals);
+
+  // 2. Allocation by category (cash → "현금성/Cash" category)
   const byCat = {};
   activeStocks.forEach(s => { byCat[s.category] = (byCat[s.category]||0) + toKRW(s.holdings*s.currentPrice,s.currency); });
+  if (totalCashVal > 0) byCat[cashLabel] = (byCat[cashLabel]||0) + totalCashVal;
   mkDonut('c-alloc-cat', Object.keys(byCat), Object.values(byCat));
 
-  // 3. Allocation by account
+  // 3. Allocation by account (cash split per account)
   const byAcc = {};
   activeStocks.forEach(s => { byAcc[s.account] = (byAcc[s.account]||0) + toKRW(s.holdings*s.currentPrice,s.currency); });
+  cashEntries.forEach(([acc,c]) => { byAcc[acc] = (byAcc[acc]||0) + toKRW(c.amount,c.currency||'KRW'); });
   mkDonut('c-alloc-acc', Object.keys(byAcc), Object.values(byAcc));
 
   // 4. Profit rate by stock (with KRW P&L amount in tooltip)
@@ -2945,6 +2974,31 @@ function renderSettings() {
     </div>
 
     <div class="settings-section">
+      <div class="settings-section-title">${t('settings.cash')}</div>
+      <div class="text-muted text-sm mb-12">${t('settings.cashDesc')}</div>
+      ${getAccounts().map(acc => {
+        const cb = (db.cashBalances||{})[acc] || { amount:0, currency:'KRW' };
+        return `<div class="settings-row" style="gap:8px;flex-wrap:wrap">
+          <div style="min-width:80px;font-size:13px;font-weight:500">${acc}</div>
+          <div class="flex-row" style="gap:6px;flex:1;justify-content:flex-end">
+            <div class="input-unit-wrap" style="width:140px">
+              <input class="form-input mono" type="number" min="0" step="any"
+                placeholder="0"
+                value="${cb.amount||''}"
+                data-cash-acc="${acc}"
+                style="padding-right:44px">
+              <span class="input-unit" data-cash-unit="${acc}">${cb.currency==='USD'?'$':'₩'}</span>
+            </div>
+            <div class="toggle-group" style="width:90px">
+              <button class="toggle-btn ${cb.currency!=='USD'?'active':''}" data-cash-curr="${acc}" data-val="KRW" style="font-size:11px">₩</button>
+              <button class="toggle-btn ${cb.currency==='USD'?'active':''}" data-cash-curr="${acc}" data-val="USD" style="font-size:11px">$</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="settings-section">
       <div class="settings-section-title">${t('settings.data')}</div>
       <div class="flex-row flex-wrap gap-4">
         <button class="btn btn-secondary" data-action="exp-json">${t('settings.exportJson')}</button>
@@ -2977,6 +3031,31 @@ function renderSettings() {
   app.querySelectorAll('[data-del-cat]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();db.settings.customCategories=db.settings.customCategories.filter(x=>x!==b.dataset.delCat);saveDB();reRenderView(renderSettings);}));
   app.querySelector('[data-action="exp-json"]').addEventListener('click',exportJSON);
   app.querySelector('[data-action="imp-json"]').addEventListener('click',()=>app.querySelector('#set-import-file').click());
+
+  // Cash balance inputs
+  if (!db.cashBalances) db.cashBalances = {};
+  app.querySelectorAll('[data-cash-acc]').forEach(input => {
+    input.addEventListener('change', () => {
+      const acc = input.dataset.cashAcc;
+      if (!db.cashBalances[acc]) db.cashBalances[acc] = { amount:0, currency:'KRW' };
+      db.cashBalances[acc].amount = parseFloat(input.value) || 0;
+      saveDB();
+    });
+  });
+  app.querySelectorAll('[data-cash-curr]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const acc = btn.dataset.cashCurr;
+      const val = btn.dataset.val;
+      if (!db.cashBalances[acc]) db.cashBalances[acc] = { amount:0, currency:'KRW' };
+      db.cashBalances[acc].currency = val;
+      saveDB();
+      // update toggle UI
+      app.querySelectorAll(`[data-cash-curr="${acc}"]`).forEach(b => b.classList.toggle('active', b.dataset.val === val));
+      // update unit display
+      const unitEl = app.querySelector(`[data-cash-unit="${acc}"]`);
+      if (unitEl) unitEl.textContent = val === 'USD' ? '$' : '₩';
+    });
+  });
   app.querySelector('#set-import-file').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const data=JSON.parse(ev.target.result);if(confirm(t('mydb.overwriteConfirm'))){db=data;saveDB();document.body.setAttribute('data-theme',db.settings.theme||'light');toast(t('common.dataOverwritten'),'success');reRenderView(renderSettings);}else{toast(t('common.importCancelled'),'info');}}catch(err){toast(t('common.invalidQty'),'error');}};r.readAsText(f);});
   app.querySelector('[data-action="reset"]').addEventListener('click',()=>{if(confirm(t('settings.resetConfirm'))){db=deepClone(DEFAULT_DB);seedIfEmpty();saveDB();document.body.setAttribute('data-theme','light');toast(t('common.dataReset'),'success');navigate('home');}});
 }
