@@ -1695,7 +1695,7 @@ function renderDashboard() {
       <div class="stat-card">
         <div class="stat-label">${t('dashboard.usdkrw')}</div>
         <div class="stat-value mono">${formatNum(rate, 2)}</div>
-        <div class="stat-sub text-muted">${db.exchangeRate.updatedAt ? formatDate(db.exchangeRate.updatedAt) : 'cached'}</div>
+        <div class="stat-sub text-muted">${db.exchangeRate.updatedAt ? formatDate(db.exchangeRate.updatedAt) : (db.settings.language==='ko'?'캐시됨':'cached')}</div>
       </div>
     </div>
 
@@ -2369,7 +2369,7 @@ function renderTradelog() {
                 display:flex;justify-content:space-between;align-items:center">
               <div>
                 <div style="font-weight:700;font-size:14px">${s.name}</div>
-                <div style="font-family:'Space Mono',monospace;font-size:11px;opacity:0.75">${s.ticker}${s.holdings>0?' · '+formatNum(s.holdings,s.holdings%1===0?0:2)+' 주':''}
+                <div style="font-family:'Space Mono',monospace;font-size:11px;opacity:0.75">${s.ticker}${s.holdings>0?' · '+formatNum(s.holdings,s.holdings%1===0?0:2)+(isKo?' 주':' shares'):''}
                 </div>
               </div>
               <div style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700">
@@ -2707,7 +2707,7 @@ function renderNews() {
     </div>
     <div class="table-toolbar">
       <select class="filter-select" id="nf-stock">
-        <option value="all">All Stocks</option>
+        <option value="all">${t('trade.allStocks')}</option>
         ${db.stocks.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
       </select>
       <input type="date" class="filter-select filter-date" id="nf-from" value="${newsFilter.from}">
@@ -3280,7 +3280,7 @@ function renderPrinciples() {
       <button class="btn btn-primary btn-sm" data-action="add-principle">${t('playbook.addPrinciple')}</button>
     </div>
     <div id="principles-list">
-      ${items.length===0?`<div class="empty-state">No principles yet.</div>`:
+      ${items.length===0?`<div class="empty-state">${t('playbook.noPrinciples')}</div>`:
         items.map((p,i)=>`
         <div class="principle-item" data-pid="${p.id}">
           <span class="principle-num">${i+1}.</span>
@@ -3303,7 +3303,7 @@ function renderGoals() {
     <div class="flex-row" style="margin-bottom:12px">
       <button class="btn btn-primary btn-sm" data-action="add-goal">${t('playbook.addGoal')}</button>
     </div>
-    ${db.playbook.goals.length===0?`<div class="empty-state">No goals yet.</div>`:
+    ${db.playbook.goals.length===0?`<div class="empty-state">${t('playbook.noGoals')}</div>`:
       db.playbook.goals.map(g=>`
       <div class="card mb-12" data-gid="${g.id}">
         <div class="flex-row" style="justify-content:space-between;margin-bottom:8px">
@@ -3313,10 +3313,10 @@ function renderGoals() {
             <button class="btn btn-ghost btn-sm btn-icon" data-delete-g="${g.id}">✕</button>
           </div>
         </div>
-        <div class="mono text-sm" style="margin-bottom:4px">Target: <span class="profit-text">${g.targetMultiple}×</span> by ${formatDate(g.deadline)}</div>
+        <div class="mono text-sm" style="margin-bottom:4px">${t('playbook.targetProgress')}: <span class="profit-text">${g.targetMultiple}×</span> by ${formatDate(g.deadline)}</div>
         <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,(multiple/g.targetMultiple)*100).toFixed(1)}%;background:${multiple>=g.targetMultiple?'var(--profit)':'var(--accent)'}"></div></div>
         <div class="flex-row" style="justify-content:space-between;margin-top:4px">
-          <span class="mono text-xs text-muted">Current: ${multiple.toFixed(2)}×</span>
+          <span class="mono text-xs text-muted">${t('playbook.currentProgress')}: ${multiple.toFixed(2)}×</span>
           <span class="mono text-xs text-muted">${Math.min(100,(multiple/g.targetMultiple)*100).toFixed(1)}%</span>
         </div>
         ${g.memo?`<div class="text-muted text-sm mt-8">${g.memo}</div>`:''}
@@ -3848,34 +3848,39 @@ function renderDetailOverview(stock) {
   const c = calcStock(stock);
   const total = totalPortfolioValue();
   const alloc = (c.currentValue!=null&&total>0) ? toKRW(c.currentValue,stock.currency)/total*100 : null;
+  const isKo = db.settings.language === 'ko';
+  const sharesUnit = isKo ? ' 주' : ' shares';
   const fields = [
-    ['Account', stock.account], ['Category', stock.category],
-    ['Holdings', formatNum(stock.holdings, stock.holdings%1===0?0:4) + ' shares'],
-    ['Avg Price', stock.currency==='KRW'?'₩'+formatNum(stock.avgPrice,0):'$'+formatNum(stock.avgPrice,2)],
-    ['Current Price', stock.currentPrice!=null?formatPrice(stock.currentPrice,stock.currency):'--'],
-    ['Current Value', c.currentValue!=null?formatKRW(toKRW(c.currentValue,stock.currency)):'--'],
-    ['P&L Amount', c.profitAmount!=null?`<span class="${plClass(c.profitAmount)}">${c.profitAmount>=0?'+':''}${stock.currency==='KRW'?'₩'+formatNum(c.profitAmount,0):'$'+formatNum(c.profitAmount,2)}</span>`:'--'],
-    ['P&L %', c.profitRate!=null?`<span class="${plClass(c.profitRate)}">${formatPct(c.profitRate)}</span>`:'--'],
-    ['Allocation', alloc!=null?formatNum(alloc,1)+'%':'--'],
-    ['Exchange', stock.exchange], ['Currency', stock.currency],
+    [isKo?'계좌':'Account',       stock.account],
+    [isKo?'카테고리':'Category',   stock.category],
+    [isKo?'보유량':'Holdings',     formatNum(stock.holdings, stock.holdings%1===0?0:4) + sharesUnit],
+    [isKo?'평단가':'Avg Price',    stock.currency==='KRW'?'₩'+formatNum(stock.avgPrice,0):'$'+formatNum(stock.avgPrice,2)],
+    [isKo?'현재가':'Cur Price',    stock.currentPrice!=null?formatPrice(stock.currentPrice,stock.currency):'--'],
+    [isKo?'평가금액':'Mkt Value',  c.currentValue!=null?formatKRW(toKRW(c.currentValue,stock.currency)):'--'],
+    [isKo?'수익금':'P&L',          c.profitAmount!=null?`<span class="${plClass(c.profitAmount)}">${c.profitAmount>=0?'+':''}${stock.currency==='KRW'?'₩'+formatNum(c.profitAmount,0):'$'+formatNum(c.profitAmount,2)}</span>`:'--'],
+    [isKo?'수익률':'P&L %',        c.profitRate!=null?`<span class="${plClass(c.profitRate)}">${formatPct(c.profitRate)}</span>`:'--'],
+    [isKo?'비중':'Alloc',          alloc!=null?formatNum(alloc,1)+'%':'--'],
+    [isKo?'거래소':'Exchange',     stock.exchange],
+    [isKo?'통화':'Currency',       stock.currency],
   ];
   return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
     ${fields.map(([k,v])=>`<div class="card" style="padding:12px"><div class="card-title">${k}</div><div class="mono">${v}</div></div>`).join('')}
   </div>
-  <div class="card" style="padding:12px"><div class="card-title">Memo</div><p class="text-sm">${stock.memo||'—'}</p></div>
+  <div class="card" style="padding:12px"><div class="card-title">${isKo?'메모':'Memo'}</div><p class="text-sm">${stock.memo||'—'}</p></div>
   <div class="modal-footer" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-    <button class="btn btn-primary btn-sm" id="detail-trade-btn">Record Trade</button>
+    <button class="btn btn-primary btn-sm" id="detail-trade-btn">${isKo?'매매 기록':'Record Trade'}</button>
   </div>`;
 }
 
 function renderDetailTrades(stock) {
+  const isKo = db.settings.language === 'ko';
   const trades = db.trades.filter(t=>t.stockId===stock.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
-  if (!trades.length) return `<div class="empty-state">No trades for ${stock.name} yet.</div>`;
+  if (!trades.length) return `<div class="empty-state">${isKo?`${stock.name} 매매 기록 없음`:`No trades for ${stock.name} yet.`}</div>`;
   return `<div class="table-wrap"><table>
-    <thead><tr><th>Date</th><th>Type</th><th>Qty</th><th>Price</th><th>Total</th><th>Memo</th><th></th></tr></thead>
+    <thead><tr><th>${t('trade.date')}</th><th>${t('trade.type')}</th><th>${t('trade.qty')}</th><th>${t('trade.price')}</th><th>${t('trade.total')}</th><th>${t('trade.memo')}</th><th></th></tr></thead>
     <tbody>${trades.map(tr=>`<tr>
       <td class="mono text-sm">${formatDate(tr.date)}</td>
-      <td><span class="badge badge-${tr.type}">${tr.type.toUpperCase()}</span></td>
+      <td><span class="badge badge-${tr.type}">${isKo?(tr.type==='buy'?'매수':'매도'):tr.type.toUpperCase()}</span></td>
       <td class="td-num mono">${formatNum(tr.quantity,4)}</td>
       <td class="td-num mono">${stock.currency==='KRW'?'₩':'$'}${formatNum(tr.price,2)}</td>
       <td class="td-num mono fw-600">${stock.currency==='KRW'?'₩':'$'}${formatNum(tr.quantity*tr.price,2)}</td>
@@ -3886,8 +3891,9 @@ function renderDetailTrades(stock) {
 }
 
 function renderDetailNews(stock) {
+  const isKo = db.settings.language === 'ko';
   const items = db.news.filter(n=>n.relatedStockIds.includes(stock.id)).sort((a,b)=>new Date(b.date)-new Date(a.date));
-  if (!items.length) return `<div class="empty-state">No news linked to ${stock.name}.</div>`;
+  if (!items.length) return `<div class="empty-state">${isKo?`${stock.name} 관련 뉴스 없음`:`No news linked to ${stock.name}.`}</div>`;
   return items.map(n=>`<div class="card mb-12">
     <div class="flex-row" style="justify-content:space-between;margin-bottom:6px">
       <span class="mono text-sm text-muted">${formatDate(n.date)}</span>
