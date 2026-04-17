@@ -1604,6 +1604,51 @@ function renderDashboard() {
     if (dashSort.col === col) dashSort.dir *= -1; else { dashSort.col = col; dashSort.dir = 1; }
     reRenderView(renderDashboard);
   }));
+  document.querySelectorAll('[data-manual-price]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation(); // row click 방지
+      const stockId = btn.dataset.manualPrice;
+      const stock = db.stocks.find(s => s.id === stockId);
+      if (!stock) return;
+      const cell = document.querySelector(`[data-price-cell="${stockId}"]`);
+      if (!cell) return;
+      const unit = stock.currency === 'KRW' ? '₩' : '$';
+      cell.innerHTML = `
+        <div class="flex-row" style="justify-content:flex-end;gap:4px" onclick="event.stopPropagation()">
+          <div class="input-unit-wrap" style="width:100px">
+            <input type="number" class="form-input mono" id="mp-${stockId}"
+              value="${stock.currentPrice||''}" min="0" step="any"
+              style="height:26px;padding:2px 28px 2px 6px;font-size:12px"
+              placeholder="0">
+            <span class="input-unit" style="font-size:10px">${unit}</span>
+          </div>
+          <button data-save-price="${stockId}" class="btn btn-primary" style="height:26px;padding:0 8px;font-size:11px">✓</button>
+          <button data-cancel-price="${stockId}" class="btn btn-secondary" style="height:26px;padding:0 8px;font-size:11px">✕</button>
+        </div>`;
+      const input = document.getElementById(`mp-${stockId}`);
+      if (input) { input.focus(); input.select(); }
+
+      cell.querySelector(`[data-save-price]`).addEventListener('click', e => {
+        e.stopPropagation();
+        const val = parseFloat(input.value);
+        if (isNaN(val) || val < 0) { toast(t('common.invalidPrice'), 'error'); return; }
+        stock.currentPrice = val;
+        stock.priceUpdatedAt = new Date().toISOString();
+        stock.stale = false;
+        saveDB();
+        reRenderView(renderDashboard);
+      });
+      input?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') cell.querySelector(`[data-save-price]`).click();
+        if (e.key === 'Escape') cell.querySelector(`[data-cancel-price]`).click();
+      });
+      cell.querySelector(`[data-cancel-price]`).addEventListener('click', e => {
+        e.stopPropagation();
+        reRenderView(renderDashboard);
+      });
+    });
+  });
+
   document.querySelectorAll('.stock-row').forEach(tr => {
     tr.addEventListener('click', () => openStockDetail(tr.dataset.stockId));
   });
@@ -1657,8 +1702,15 @@ function renderDashTable(total) {
         <td><span class="fw-600">${s.name}</span></td>
         <td><span class="mono" style="color:var(--accent)">${s.ticker}</span></td>
         <td class="td-num" data-price-cell="${s.id}">
-          ${s.currentPrice == null ? '<span class="shimmer">loading</span>' : formatPrice(s.currentPrice, s.currency)}
-          ${s.stale ? '<span class="stale-icon" title="Stale">⚠</span>' : ''}
+          ${s.currentPrice == null
+            ? `<span class="shimmer">loading</span>`
+            : formatPrice(s.currentPrice, s.currency)}
+          ${s.stale
+            ? `<span class="stale-icon" title="Stale">⚠</span>
+               <button class="manual-price-btn" data-manual-price="${s.id}" title="${db.settings.language==='ko'?'직접 입력':'Enter manually'}" style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:0">✏</button>`
+            : s.currentPrice == null
+              ? `<button class="manual-price-btn" data-manual-price="${s.id}" title="${db.settings.language==='ko'?'직접 입력':'Enter manually'}" style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:0">✏</button>`
+              : ''}
         </td>
         <td class="td-num">${formatNum(s.holdings, s.holdings%1===0?0:4)}</td>
         <td class="td-num ${plClass(s.profitAmount)}">${s.profitAmount != null ? (s.currency==='USD' && db.settings.currency==='USD' ? (s.profitAmount>=0?'+':'')+formatNum(s.profitAmount,2,'$') : (s.profitAmount>=0?'+':'')+formatKRW(toKRW(s.profitAmount,s.currency))) : '--'}</td>
