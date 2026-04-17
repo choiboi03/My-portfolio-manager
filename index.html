@@ -448,7 +448,10 @@ th {
   transition: color 0.15s;
 }
 th:hover { color: var(--text); }
-th.sorted { color: var(--accent); }
+th.col-drag-over {
+  background: var(--accent-dim) !important;
+  border-left: 2px solid var(--accent);
+}
 th .sort-arrow { margin-left: 4px; opacity: 0.5; }
 th.sorted .sort-arrow { opacity: 1; }
 td {
@@ -756,7 +759,7 @@ tr.row-zero td { opacity: 0.45; }
 .mt-12 { margin-top: 12px; }
 .mt-16 { margin-top: 16px; }
 .mb-12 { margin-bottom: 12px; }
-.stale-icon { color: var(--alert); font-size: 11px; margin-left: 3px; }
+.stale-icon { color: var(--alert); font-size: 14px; margin-left: 4px; vertical-align: middle; }
 .pagination {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 16px; border-top: 1px solid var(--border);
@@ -916,12 +919,103 @@ tr.row-zero td { opacity: 0.45; }
 }
 .onboard-btn-primary:hover { filter: brightness(1.1); }
 
+/* ═══════════════════════════════════════════
+   QUICK TRADE CARD
+═══════════════════════════════════════════ */
+.trade-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  max-width: 480px;
+  margin: 0 auto;
+}
+.trade-type-strip {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; margin-bottom: 24px;
+}
+.trade-type-big {
+  height: 64px; border-radius: 12px;
+  font-size: 18px; font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer; transition: all 0.15s;
+  border: 2px solid transparent;
+  font-family: 'Space Mono', monospace;
+}
+.trade-type-big.buy-btn {
+  background: var(--profit-dim); color: var(--profit);
+  border-color: var(--profit);
+}
+.trade-type-big.buy-btn.active,
+.trade-type-big.buy-btn:hover {
+  background: var(--profit); color: #fff;
+  box-shadow: 0 4px 20px rgba(34,197,94,0.35);
+}
+.trade-type-big.sell-btn {
+  background: var(--loss-dim); color: var(--loss);
+  border-color: var(--loss);
+}
+.trade-type-big.sell-btn.active,
+.trade-type-big.sell-btn:hover {
+  background: var(--loss); color: #fff;
+  box-shadow: 0 4px 20px rgba(239,68,68,0.35);
+}
+.trade-stock-select {
+  width: 100%; height: 48px; padding: 0 14px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border2);
+  border-radius: 10px;
+  color: var(--text); font-size: 14px; font-weight: 500;
+  cursor: pointer; margin-bottom: 14px;
+  transition: border-color 0.15s;
+}
+.trade-stock-select:focus { border-color: var(--accent); outline: none; }
+.trade-num-row {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px; margin-bottom: 14px;
+}
+.trade-field-label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted); margin-bottom: 5px;
+}
+.trade-total-bar {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+.trade-total-label { font-size: 12px; color: var(--muted); font-weight: 600; }
+.trade-total-value { font-family: 'Space Mono', monospace; font-size: 16px; font-weight: 700; }
+.trade-submit-btn {
+  width: 100%; height: 52px;
+  border-radius: 12px;
+  font-size: 15px; font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer; transition: all 0.15s;
+  border: none; font-family: 'Space Mono', monospace;
+}
+.trade-submit-btn.buy-mode  { background: var(--profit); color: #fff; }
+.trade-submit-btn.sell-mode { background: var(--loss);   color: #fff; }
+.trade-submit-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.trade-submit-btn:active { transform: translateY(0); }
+.trade-saved-msg {
+  text-align: center; padding: 16px;
+  font-size: 13px; color: var(--profit);
+  font-weight: 600; animation: fadeIn 0.3s ease;
+  line-height: 1.6;
+}
+
 @media (max-width: 500px) {
   .view { padding: 12px 12px 32px; }
   .stat-strip { grid-template-columns: 1fr 1fr; }
   .form-row { grid-template-columns: 1fr; }
   .modal { padding: 16px; }
   .home-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .trade-num-row { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
   .stat-strip { grid-template-columns: repeat(2, 1fr); }
@@ -965,7 +1059,7 @@ const DEFAULT_DB = {
   playbook: { principles: [], goals: [], watchlist: [] },
   exchangeRate: { USDKRW: 1380, updatedAt: null },
   cashBalances: {},  // { [accountName]: { amount: number, currency: 'KRW'|'USD' } }
-  settings: { theme:'light', language:'en', currency:'USD', customAccounts:[], customCategories:[], deletedAccounts:[], deletedCategories:[], onboarded:false }
+  settings: { theme:'light', language:'en', currency:'USD', customAccounts:[], customCategories:[], deletedAccounts:[], deletedCategories:[], onboarded:false, colOrder:null }
 };
 
 let db = {};
@@ -1041,14 +1135,17 @@ function seedIfEmpty() {
 ═══════════════════════════════════════════════════════════ */
 const i18n = {
   en: {
-    nav: { dashboard:'Dashboard', graphs:'Graphs', tradelog:'Trade Log', news:'News', myrule:'My Rule', playbook:'Playbook', mydb:'My DB', settings:'Settings' },
+    nav: { dashboard:'Dashboard', graphs:'Graphs', tradelog:'Trade', news:'News', myrule:'My Rule', playbook:'Playbook', mydb:'My DB', settings:'Settings' },
     dashboard: { title:'Dashboard', addStock:'+ Add Stock', refreshPrices:'↻ Refresh Prices', totalValue:'Total Value', totalPL:'Total P&L', numHoldings:'Holdings', usdkrw:'USD / KRW',
       allAccounts:'All Accounts', allCategories:'All Categories', allMarkets:'All Markets', usOnly:'US Only', krOnly:'KR Only', loading:'↻ Loading...',
       emptyState:'No stocks yet. Go to My DB → + Add Stock to get started.',
       totalCash:'Cash (예수금)', cashLabel:'Cash' },
-    cols: { name:'Name', ticker:'Ticker', account:'Account', category:'Category', shares:'Shares', avgPrice:'Avg Price', curPrice:'Cur Price', pl:'P&L', plPct:'P&L %', alloc:'Alloc %' },
-    trade: { title:'Trade Log', recordTrade:'+ Record Trade', date:'Date', stock:'Stock', type:'Type', qty:'Qty', price:'Price/Share', total:'Total', memo:'Memo', buy:'Buy', sell:'Sell',
-      noTrades:'No trades recorded yet.', allStocks:'All Stocks', allTypes:'All', deleteConfirm:'Delete this trade?' },
+    cols: { name:'Name', ticker:'Ticker', marketValue:'Market Value', account:'Account', category:'Category', shares:'Shares', avgPrice:'Avg Price', curPrice:'Cur Price', pl:'P&L', plPct:'P&L %', alloc:'Alloc %' },
+    trade: { title:'Trade', recordTrade:'+ Record Trade', date:'Date', stock:'Stock', type:'Type', qty:'Qty', price:'Price/Share', total:'Total', memo:'Memo', buy:'Buy', sell:'Sell',
+      noTrades:'No trades recorded yet.', allStocks:'All Stocks', allTypes:'All', deleteConfirm:'Delete this trade?',
+      quickTitle:'Quick Trade Entry', selectStock:'Select a stock', buyBtn:'BUY', sellBtn:'SELL',
+      savedMsg:'Saved! Check it in My DB → Trade Log', qtyLabel:'Quantity', priceLabel:'Price per share', memoPlaceholder:'Optional note...', totalLabel:'Total', saveBtn:'Record Trade',
+      noStocksHint:'Add stocks in My DB first', tradeLog:'Trade Log' },
     news: { title:'News', addNews:'+ Add News', source:'Source', url:'URL', summary:'Summary', relatedStocks:'Related Stocks', noNews:'No news scraps yet.',
       editNews:'Edit News', addNewsTitle:'Add News', deleteConfirm:'Delete this news item?', searching:'Searching...' },
     rule: { title:'My Rule', addRule:'+ Add Rule', alerts:'Active Alerts', noAlerts:'No rules triggered', ruleName:'Rule Name', target:'Target', allStocks:'All Stocks',
@@ -1060,7 +1157,7 @@ const i18n = {
       moveToPortfolio:'Move to Portfolio', noWatchlist:'Watchlist is empty.', noPrinciples:'No principles yet.', noGoals:'No goals yet.',
       newPrinciple:'New principle:', editPrinciple:'Edit:', goalLabel:'Label', goalMultiple:'Target Multiple (e.g. 2.5)', goalDeadline:'Deadline', goalMemo:'Memo',
       watchName:'Name', watchTicker:'Ticker', watchNote:'Note', deleteConfirm:'Delete?', targetProgress:'Target', currentProgress:'Current', progressPct:'Progress' },
-    mydb: { title:'My DB', exportXlsx:'Export Excel', exportJson:'Export JSON', importJson:'Import JSON', stocks:'Stocks', trades:'Trades', news:'News',
+    mydb: { title:'My DB', exportXlsx:'Export Excel', exportJson:'Export JSON', importJson:'Import JSON', stocks:'Stocks', trades:'Trade Log', news:'News',
       deleteStock:'Delete stock and all its trades?', deleteTrade:'Delete trade?', deleteNews:'Delete?', overwriteConfirm:'Overwrite all data?' },
     graphs: { title:'Graphs', allocByStock:'Allocation by Stock', allocByCat:'Allocation by Category', allocByAcc:'Allocation by Account',
       prByStock:'Profit Rate by Stock', prByCat:'Profit Rate by Category', cumulPnl:'Cumulative P&L', monthlyReturn:'Monthly Return (Last 6M)',
@@ -1081,14 +1178,17 @@ const i18n = {
       stockAdded:'added!' }
   },
   ko: {
-    nav: { dashboard:'대시보드', graphs:'그래프', tradelog:'매매일지', news:'뉴스', myrule:'내규칙', playbook:'플레이북', mydb:'내DB', settings:'설정' },
+    nav: { dashboard:'대시보드', graphs:'그래프', tradelog:'매매', news:'뉴스', myrule:'내규칙', playbook:'플레이북', mydb:'내DB', settings:'설정' },
     dashboard: { title:'대시보드', addStock:'+ 종목추가', refreshPrices:'↻ 가격갱신', totalValue:'총 평가금액', totalPL:'총 손익', numHoldings:'보유종목', usdkrw:'달러환율',
       allAccounts:'전체 계좌', allCategories:'전체 카테고리', allMarkets:'전체 시장', usOnly:'미국장', krOnly:'한국장', loading:'↻ 불러오는 중...',
       emptyState:'종목이 없습니다. 내DB → + 종목추가 에서 추가해보세요.',
       totalCash:'예수금', cashLabel:'예수금' },
-    cols: { name:'종목명', ticker:'티커', account:'계좌', category:'카테고리', shares:'보유량', avgPrice:'평단가', curPrice:'현재가', pl:'수익금', plPct:'수익률%', alloc:'비중%' },
-    trade: { title:'매매일지', recordTrade:'+ 매매기록', date:'날짜', stock:'종목', type:'구분', qty:'수량', price:'주당가격', total:'합계', memo:'메모', buy:'매수', sell:'매도',
-      noTrades:'매매 기록이 없습니다.', allStocks:'전체 종목', allTypes:'전체', deleteConfirm:'이 매매 기록을 삭제할까요?' },
+    cols: { name:'종목명', ticker:'티커', marketValue:'평가금액', account:'계좌', category:'카테고리', shares:'보유량', avgPrice:'평단가', curPrice:'현재가', pl:'수익금', plPct:'수익률%', alloc:'비중%' },
+    trade: { title:'매매', recordTrade:'+ 매매기록', date:'날짜', stock:'종목', type:'구분', qty:'수량', price:'주당가격', total:'합계', memo:'메모', buy:'매수', sell:'매도',
+      noTrades:'매매 기록이 없습니다.', allStocks:'전체 종목', allTypes:'전체', deleteConfirm:'이 매매 기록을 삭제할까요?',
+      quickTitle:'빠른 매매 입력', selectStock:'종목 선택', buyBtn:'매 수', sellBtn:'매 도',
+      savedMsg:'저장 완료! 내DB → 매매일지에서 확인하세요', qtyLabel:'수량', priceLabel:'주당 가격', memoPlaceholder:'메모 (선택)', totalLabel:'합계', saveBtn:'기록하기',
+      noStocksHint:'먼저 내DB에서 종목을 추가하세요', tradeLog:'매매일지' },
     news: { title:'뉴스스크랩', addNews:'+ 뉴스추가', source:'출처', url:'링크', summary:'내용요약', relatedStocks:'연관종목', noNews:'스크랩된 뉴스가 없습니다.',
       editNews:'뉴스 수정', addNewsTitle:'뉴스 추가', deleteConfirm:'이 뉴스를 삭제할까요?', searching:'검색 중...' },
     rule: { title:'내 규칙', addRule:'+ 규칙추가', alerts:'활성 알림', noAlerts:'발동된 규칙 없음', ruleName:'규칙명', target:'적용대상', allStocks:'전체종목',
@@ -1100,7 +1200,7 @@ const i18n = {
       moveToPortfolio:'포트폴리오에 추가', noWatchlist:'관심종목이 없습니다.', noPrinciples:'원칙이 없습니다.', noGoals:'목표가 없습니다.',
       newPrinciple:'새 원칙을 입력하세요:', editPrinciple:'수정:', goalLabel:'목표명', goalMultiple:'목표 배수 (예: 2.5)', goalDeadline:'목표일', goalMemo:'메모',
       watchName:'종목명', watchTicker:'티커', watchNote:'메모', deleteConfirm:'삭제할까요?', targetProgress:'목표', currentProgress:'현재', progressPct:'진행률' },
-    mydb: { title:'내 데이터베이스', exportXlsx:'엑셀 내보내기', exportJson:'JSON 내보내기', importJson:'JSON 가져오기', stocks:'종목', trades:'매매', news:'뉴스',
+    mydb: { title:'내 데이터베이스', exportXlsx:'엑셀 내보내기', exportJson:'JSON 내보내기', importJson:'JSON 가져오기', stocks:'종목', trades:'매매일지', news:'뉴스',
       deleteStock:'이 종목과 매매기록을 모두 삭제할까요?', deleteTrade:'매매기록을 삭제할까요?', deleteNews:'삭제할까요?', overwriteConfirm:'기존 데이터를 모두 덮어쓸까요?' },
     graphs: { title:'그래프', allocByStock:'종목별 비중', allocByCat:'카테고리별 비중', allocByAcc:'계좌별 비중',
       prByStock:'종목별 수익률', prByCat:'카테고리별 수익률', cumulPnl:'누적 손익', monthlyReturn:'월별 수익 (최근 6개월)',
@@ -1332,7 +1432,7 @@ const TILE_ICONS = {
 const VIEW_META_DEF = [
   { id:'dashboard', labelKey:'nav.dashboard', descEn:'Portfolio overview & stock table',    descKo:'포트폴리오 현황 & 종목 표',      color:'#2563EB' },
   { id:'graphs',    labelKey:'nav.graphs',    descEn:'Charts & allocation breakdown',       descKo:'차트 & 비중 분석',               color:'#8B5CF6' },
-  { id:'tradelog',  labelKey:'nav.tradelog',  descEn:'Buy/sell history & recording',        descKo:'매수·매도 기록 & 입력',           color:'#059669' },
+  { id:'tradelog',  labelKey:'nav.tradelog',  descEn:'Quick buy & sell entry',              descKo:'빠른 매수·매도 입력',             color:'#059669' },
   { id:'news',      labelKey:'nav.news',      descEn:'News scrapbook with stock tags',      descKo:'뉴스 스크랩 & 종목 태그',         color:'#0891B2' },
   { id:'myrule',    labelKey:'nav.myrule',    descEn:'Alerts & rule engine',                descKo:'알림 & 규칙 엔진',                color:'#D97706' },
   { id:'playbook',  labelKey:'nav.playbook',  descEn:'Principles, goals & watchlist',       descKo:'투자원칙·목표·관심종목',           color:'#7C3AED' },
@@ -1652,21 +1752,73 @@ function renderDashboard() {
   document.querySelectorAll('.stock-row').forEach(tr => {
     tr.addEventListener('click', () => openStockDetail(tr.dataset.stockId));
   });
+  setTimeout(bindColDrag, 0);
+}
+
+// Default column order (keys)
+const DEFAULT_COL_ORDER = ['name','ticker','marketValue','currentPrice','holdings','profitAmount','profitRate','avgPrice','account','category','allocation'];
+
+function getColDefs() {
+  return {
+    name:        { label: t('cols.name'),        numeric: false },
+    ticker:      { label: t('cols.ticker'),       numeric: false },
+    marketValue: { label: t('cols.marketValue'),  numeric: true  },
+    currentPrice:{ label: t('cols.curPrice'),     numeric: true  },
+    holdings:    { label: t('cols.shares'),       numeric: true  },
+    profitAmount:{ label: t('cols.pl'),           numeric: true  },
+    profitRate:  { label: t('cols.plPct'),        numeric: true  },
+    avgPrice:    { label: t('cols.avgPrice'),     numeric: true  },
+    account:     { label: t('cols.account'),      numeric: false },
+    category:    { label: t('cols.category'),     numeric: false },
+    allocation:  { label: t('cols.alloc'),        numeric: true  },
+  };
+}
+
+function getColOrder() {
+  const saved = db.settings.colOrder;
+  if (Array.isArray(saved) && saved.length === DEFAULT_COL_ORDER.length) return saved;
+  return [...DEFAULT_COL_ORDER];
+}
+
+function renderCellValue(key, s) {
+  switch(key) {
+    case 'name':
+      return `<td><span class="fw-600">${s.name}</span></td>`;
+    case 'ticker':
+      return `<td><span class="mono" style="color:var(--accent)">${s.ticker}</span></td>`;
+    case 'marketValue':
+      return `<td class="td-num fw-600">${s.currentValue != null ? formatKRW(toKRW(s.currentValue, s.currency)) : '--'}</td>`;
+    case 'currentPrice':
+      return `<td class="td-num" data-price-cell="${s.id}">
+        ${s.currentPrice == null ? '<span class="shimmer">loading</span>' : formatPrice(s.currentPrice, s.currency)}
+        ${s.stale
+          ? `<span class="stale-icon" title="Stale">⚠</span>
+             <button class="manual-price-btn" data-manual-price="${s.id}" title="${db.settings.language==='ko'?'직접 입력':'Enter manually'}" style="margin-left:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:4px;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px;line-height:1;vertical-align:middle">✏</button>`
+          : s.currentPrice == null
+            ? `<button class="manual-price-btn" data-manual-price="${s.id}" title="${db.settings.language==='ko'?'직접 입력':'Enter manually'}" style="margin-left:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:4px;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px;line-height:1;vertical-align:middle">✏</button>`
+            : ''}
+      </td>`;
+    case 'holdings':
+      return `<td class="td-num">${formatNum(s.holdings, s.holdings%1===0?0:4)}</td>`;
+    case 'profitAmount':
+      return `<td class="td-num ${plClass(s.profitAmount)}">${s.profitAmount != null ? (s.currency==='USD' && db.settings.currency==='USD' ? (s.profitAmount>=0?'+':'')+formatNum(s.profitAmount,2,'$') : (s.profitAmount>=0?'+':'')+formatKRW(toKRW(s.profitAmount,s.currency))) : '--'}</td>`;
+    case 'profitRate':
+      return `<td class="td-num ${plClass(s.profitRate)}">${s.profitRate != null ? formatPct(s.profitRate) : '--'}</td>`;
+    case 'avgPrice':
+      return `<td class="td-num">${s.currency==='USD' ? '$'+formatNum(s.avgPrice,2) : '₩'+formatNum(s.avgPrice,0)}</td>`;
+    case 'account':
+      return `<td><span class="text-sm">${s.account}</span></td>`;
+    case 'category':
+      return `<td><span class="text-sm">${s.category}</span></td>`;
+    case 'allocation':
+      return `<td class="td-num">${s.allocation != null ? formatNum(s.allocation,1)+'%' : '--'}</td>`;
+    default: return '<td>—</td>';
+  }
 }
 
 function renderDashTable(total) {
-  const cols = [
-    {key:'name',        label:t('cols.name')},
-    {key:'ticker',      label:t('cols.ticker')},
-    {key:'currentPrice',label:t('cols.curPrice')},
-    {key:'holdings',    label:t('cols.shares')},
-    {key:'profitAmount',label:t('cols.pl')},
-    {key:'profitRate',  label:t('cols.plPct')},
-    {key:'avgPrice',    label:t('cols.avgPrice')},
-    {key:'account',     label:t('cols.account')},
-    {key:'category',    label:t('cols.category')},
-    {key:'allocation',  label:t('cols.alloc')}
-  ];
+  const colOrder = getColOrder();
+  const colDefs  = getColDefs();
 
   let rows = db.stocks
     .filter(s => (dashFilter.account === 'all' || s.account === dashFilter.account)
@@ -1687,40 +1839,61 @@ function renderDashTable(total) {
     return `<span class="sort-arrow">${dashSort.dir > 0 ? '↑' : '↓'}</span>`;
   };
 
-  if (rows.length === 0) return `<table><tbody><tr><td colspan="${cols.length}" class="empty-state" style="padding:32px">
+  if (rows.length === 0) return `<table><tbody><tr><td colspan="${colOrder.length}" class="empty-state" style="padding:32px">
     <div class="empty-state-icon">📂</div>
     ${t('dashboard.emptyState')}
   </td></tr></tbody></table>`;
 
-  return `<table>
+  return `<table id="dash-table">
     <thead><tr>
-      ${cols.map(c => `<th data-col="${c.key}" class="${dashSort.col===c.key?'sorted':''}">${c.label}${arrowFor(c.key)}</th>`).join('')}
+      ${colOrder.map((key,i) => `<th data-col="${key}" data-col-idx="${i}" draggable="true"
+        class="${dashSort.col===key?'sorted':''}"
+        style="cursor:grab;user-select:none">
+        ${colDefs[key]?.label||key}${arrowFor(key)}
+      </th>`).join('')}
     </tr></thead>
     <tbody>
       ${rows.map(s => `
       <tr class="stock-row ${s.holdings===0?'row-zero':''}" data-stock-id="${s.id}" style="cursor:pointer">
-        <td><span class="fw-600">${s.name}</span></td>
-        <td><span class="mono" style="color:var(--accent)">${s.ticker}</span></td>
-        <td class="td-num" data-price-cell="${s.id}">
-          ${s.currentPrice == null
-            ? `<span class="shimmer">loading</span>`
-            : formatPrice(s.currentPrice, s.currency)}
-          ${s.stale
-            ? `<span class="stale-icon" title="Stale">⚠</span>
-               <button class="manual-price-btn" data-manual-price="${s.id}" title="${db.settings.language==='ko'?'직접 입력':'Enter manually'}" style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:0">✏</button>`
-            : s.currentPrice == null
-              ? `<button class="manual-price-btn" data-manual-price="${s.id}" title="${db.settings.language==='ko'?'직접 입력':'Enter manually'}" style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:0">✏</button>`
-              : ''}
-        </td>
-        <td class="td-num">${formatNum(s.holdings, s.holdings%1===0?0:4)}</td>
-        <td class="td-num ${plClass(s.profitAmount)}">${s.profitAmount != null ? (s.currency==='USD' && db.settings.currency==='USD' ? (s.profitAmount>=0?'+':'')+formatNum(s.profitAmount,2,'$') : (s.profitAmount>=0?'+':'')+formatKRW(toKRW(s.profitAmount,s.currency))) : '--'}</td>
-        <td class="td-num ${plClass(s.profitRate)}">${s.profitRate != null ? formatPct(s.profitRate) : '--'}</td>
-        <td class="td-num">${s.currency==='USD' ? '$'+formatNum(s.avgPrice,2) : '₩'+formatNum(s.avgPrice,0)}</td>
-        <td><span class="text-sm">${s.account}</span></td>
-        <td><span class="text-sm">${s.category}</span></td>
-        <td class="td-num">${s.allocation != null ? formatNum(s.allocation,1)+'%' : '--'}</td>
+        ${colOrder.map(key => renderCellValue(key, s)).join('')}
       </tr>`).join('')}
     </tbody></table>`;
+}
+
+// Column drag-to-reorder
+function bindColDrag() {
+  const table = document.getElementById('dash-table');
+  if (!table) return;
+  const headers = [...table.querySelectorAll('thead th')];
+  let dragIdx = null;
+
+  headers.forEach((th, i) => {
+    th.addEventListener('dragstart', e => {
+      dragIdx = i;
+      th.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    th.addEventListener('dragend', () => {
+      th.style.opacity = '';
+      headers.forEach(h => h.classList.remove('col-drag-over'));
+    });
+    th.addEventListener('dragover', e => {
+      e.preventDefault();
+      headers.forEach(h => h.classList.remove('col-drag-over'));
+      th.classList.add('col-drag-over');
+    });
+    th.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragIdx === null || dragIdx === i) return;
+      const order = getColOrder();
+      const moved = order.splice(dragIdx, 1)[0];
+      order.splice(i, 0, moved);
+      db.settings.colOrder = order;
+      saveDB();
+      dragIdx = null;
+      reRenderView(renderDashboard);
+    });
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1982,42 +2155,222 @@ let tlFilter = { stockId:'all', type:'all', from:defaultFrom(), to:today() };
 
 function renderTradelog() {
   const app = document.getElementById('app');
+  const isKo = db.settings.language === 'ko';
+
+  if (db.stocks.length === 0) {
+    app.innerHTML = `
+    <div class="view">
+      <div class="view-header"><span class="view-title">${t('trade.title')}</span><span></span></div>
+      <div class="trade-card">
+        <div class="empty-state"><div class="empty-state-icon">📭</div>${t('trade.noStocksHint')}</div>
+      </div>
+    </div>`;
+    return;
+  }
+
+  let step = 1;
+  let selType = null;
+  let selStockId = null;
+  let savedQty = '', savedPrice = '', savedMemo = '', savedDate = today();
+
+  function render() {
+    const stock = db.stocks.find(s => s.id === selStockId);
+    const unit  = stock ? (stock.currency==='KRW'?'₩':'$') : '—';
+
+    const dots = [1,2,3,4].map(i =>
+      `<div style="width:${i===step?'20px':'8px'};height:8px;border-radius:4px;background:${i<=step?'var(--accent)':'var(--border2)'};transition:all 0.2s"></div>`
+    ).join('');
+
+    let body = '';
+
+    if (step === 1) {
+      body = `
+        <div style="text-align:center;margin-bottom:28px;color:var(--muted);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em">
+          ${isKo ? '어떤 거래인가요?' : 'What type of trade?'}
+        </div>
+        <div class="trade-type-strip" style="gap:14px">
+          <button class="trade-type-big buy-btn" id="step-buy" style="height:90px;flex-direction:column;gap:6px;display:flex;align-items:center;justify-content:center">
+            <span style="font-size:30px">📈</span>
+            <span style="font-size:18px">${t('trade.buyBtn')}</span>
+          </button>
+          <button class="trade-type-big sell-btn" id="step-sell" style="height:90px;flex-direction:column;gap:6px;display:flex;align-items:center;justify-content:center">
+            <span style="font-size:30px">📉</span>
+            <span style="font-size:18px">${t('trade.sellBtn')}</span>
+          </button>
+        </div>`;
+    }
+
+    if (step === 2) {
+      const stocks = selType === 'sell' ? db.stocks.filter(s => s.holdings > 0) : db.stocks;
+      body = `
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="font-size:24px;margin-bottom:6px">${selType==='buy'?'📈':'📉'}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">
+            ${isKo ? '종목을 선택하세요' : 'Select a stock'}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto">
+          ${stocks.map(s => `
+            <button class="stock-pick-btn" data-pick="${s.id}"
+              style="width:100%;padding:14px 16px;border-radius:10px;
+                background:${s.id===selStockId?'var(--accent)':'var(--surface2)'};
+                color:${s.id===selStockId?'#fff':'var(--text)'};
+                border:1.5px solid ${s.id===selStockId?'var(--accent)':'var(--border2)'};
+                cursor:pointer;transition:all 0.15s;text-align:left;
+                display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-weight:700;font-size:14px">${s.name}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:11px;opacity:0.75">${s.ticker}${s.holdings>0?' · '+formatNum(s.holdings,s.holdings%1===0?0:2)+' 주':''}
+                </div>
+              </div>
+              <div style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700">
+                ${s.currentPrice ? formatPrice(s.currentPrice, s.currency) : '—'}
+              </div>
+            </button>`).join('')}
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <button class="btn btn-secondary" id="step-back" style="flex:1">← ${isKo?'이전':'Back'}</button>
+          <button class="btn btn-primary" id="step-next" style="flex:2" ${!selStockId?'disabled':''}>
+            ${isKo?'다음 →':'Next →'}
+          </button>
+        </div>`;
+    }
+
+    if (step === 3) {
+      body = `
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">
+            ${isKo?'수량과 가격을 입력하세요':'Enter quantity & price'}
+          </div>
+          <div style="font-family:'Space Mono',monospace;font-size:13px;color:var(--accent)">${stock?.name} · ${stock?.ticker}</div>
+        </div>
+
+        <div class="trade-field-label">${t('trade.date')}</div>
+        <input class="form-input mono" id="tq-date" type="date" value="${savedDate}"
+          style="width:100%;display:block;margin-bottom:14px">
+
+        <div class="trade-num-row">
+          <div>
+            <div class="trade-field-label">${t('trade.qtyLabel')}</div>
+            <input class="form-input mono" id="tq-qty" type="number" min="0" step="any" placeholder="0" value="${savedQty}">
+          </div>
+          <div>
+            <div class="trade-field-label">${t('trade.priceLabel')}</div>
+            <div class="input-unit-wrap">
+              <input class="form-input mono" id="tq-price" type="number" min="0" step="any" placeholder="0" value="${savedPrice||stock?.currentPrice||''}">
+              <span class="input-unit">${unit}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="trade-field-label">${t('trade.memo')}</div>
+        <textarea class="form-textarea" id="tq-memo" rows="2"
+          placeholder="${t('trade.memoPlaceholder')}" style="margin-bottom:16px">${savedMemo}</textarea>
+
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" id="step-back" style="flex:1">← ${isKo?'이전':'Back'}</button>
+          <button class="btn btn-primary" id="step-next" style="flex:2">${isKo?'확인 →':'Review →'}</button>
+        </div>`;
+    }
+
+    if (step === 4) {
+      const qty   = parseFloat(savedQty)   || 0;
+      const price = parseFloat(savedPrice) || 0;
+      const total = qty * price;
+      const typeColor = selType==='buy' ? 'var(--profit)' : 'var(--loss)';
+      const rows = [
+        [isKo?'종목':'Stock',     `${stock?.name} (${stock?.ticker})`],
+        [isKo?'거래':'Type',      `<span style="color:${typeColor};font-weight:800">${isKo?(selType==='buy'?'매수':'매도'):(selType==='buy'?'BUY':'SELL')}</span>`],
+        [isKo?'날짜':'Date',      formatDate(savedDate)],
+        [isKo?'수량':'Qty',       formatNum(qty, qty%1===0?0:4)],
+        [isKo?'주당가격':'Price', `${unit}${formatNum(price,2)}`],
+        [isKo?'합계':'Total',     `<strong style="font-size:16px">${unit}${formatNum(total,2)}</strong>`],
+        ...(savedMemo ? [[isKo?'메모':'Memo', savedMemo]] : [])
+      ];
+      body = `
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="font-size:28px;margin-bottom:8px">${selType==='buy'?'📈':'📉'}</div>
+          <div style="font-size:14px;font-weight:800;color:${typeColor};font-family:'Space Mono',monospace">
+            ${isKo?(selType==='buy'?'매수 확인':'매도 확인'):(selType==='buy'?'Confirm Buy':'Confirm Sell')}
+          </div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:4px 16px;margin-bottom:16px">
+          ${rows.map(([k,v]) => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.04em">${k}</span>
+              <span style="font-family:'Space Mono',monospace;font-size:13px">${v}</span>
+            </div>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" id="step-back" style="flex:1">← ${isKo?'수정':'Edit'}</button>
+          <button class="trade-submit-btn ${selType==='buy'?'buy-mode':'sell-mode'}" id="step-save" style="flex:2;height:44px;font-size:14px">
+            ${t('trade.saveBtn')}
+          </button>
+        </div>`;
+    }
+
+    const card = app.querySelector('#trade-card');
+    card.innerHTML = `
+      <div style="display:flex;justify-content:center;gap:6px;margin-bottom:24px">${dots}</div>
+      ${body}`;
+
+    app.querySelector('#step-buy')?.addEventListener('click',  () => { selType='buy';  step=2; render(); });
+    app.querySelector('#step-sell')?.addEventListener('click', () => { selType='sell'; step=2; render(); });
+    app.querySelector('#step-back')?.addEventListener('click', () => { step--; render(); });
+    app.querySelector('#step-next')?.addEventListener('click', () => {
+      if (step === 3) {
+        savedQty   = app.querySelector('#tq-qty')?.value || '';
+        savedPrice = app.querySelector('#tq-price')?.value || '';
+        savedMemo  = app.querySelector('#tq-memo')?.value || '';
+        savedDate  = app.querySelector('#tq-date')?.value || today();
+        if (!savedQty || !savedPrice) { toast(t('common.invalidQty'), 'error'); return; }
+      }
+      step++;
+      render();
+    });
+
+    app.querySelectorAll('[data-pick]').forEach(btn => btn.addEventListener('click', () => {
+      selStockId = btn.dataset.pick;
+      const s = db.stocks.find(x=>x.id===selStockId);
+      if (s?.currentPrice && !savedPrice) savedPrice = s.currentPrice;
+      render();
+    }));
+
+    app.querySelector('#step-save')?.addEventListener('click', () => {
+      const qty   = parseFloat(savedQty);
+      const price = parseFloat(savedPrice);
+      const stock = db.stocks.find(s=>s.id===selStockId);
+      if (selType==='sell' && qty > stock.holdings) { toast(t('common.insufficientHoldings'),'error'); step=3; render(); return; }
+      db.trades.push({ id:uid(), stockId:selStockId, date:savedDate, type:selType, quantity:qty, price, memo:savedMemo });
+      recalcStock(selStockId);
+      saveDB();
+      const card = app.querySelector('#trade-card');
+      card.innerHTML = `
+        <div style="text-align:center;padding:24px 0">
+          <div style="font-size:52px;margin-bottom:16px">${selType==='buy'?'🎉':'✅'}</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px;color:${selType==='buy'?'var(--profit)':'var(--loss)'}">
+            ${isKo?(selType==='buy'?'매수 완료!':'매도 완료!'):(selType==='buy'?'Buy recorded!':'Sell recorded!')}
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:24px;line-height:1.8">
+            ${t('trade.savedMsg')}
+          </div>
+          <button class="btn btn-primary" id="tq-another" style="width:100%;height:44px">
+            ${isKo?'+ 추가 기록':'+ Record another'}
+          </button>
+        </div>`;
+      card.querySelector('#tq-another').addEventListener('click', () => reRenderView(renderTradelog));
+    });
+  }
+
   app.innerHTML = `
   <div class="view">
-    <div class="view-header">
-      <span class="view-title">${t('trade.title')}</span>
-      <button class="btn btn-primary btn-sm" data-action="record-trade">${t('trade.recordTrade')}</button>
-    </div>
-    <div class="table-toolbar">
-      <select class="filter-select" id="tl-stock">
-        <option value="all">${t('trade.allStocks')}</option>
-        ${db.stocks.map(s=>`<option value="${s.id}" ${tlFilter.stockId===s.id?'selected':''}>${s.name} (${s.ticker})</option>`).join('')}
-      </select>
-      <select class="filter-select" id="tl-type">
-        <option value="all">${t('trade.allTypes')}</option>
-        <option value="buy" ${tlFilter.type==='buy'?'selected':''}>${t('common.buy')}</option>
-        <option value="sell" ${tlFilter.type==='sell'?'selected':''}>${t('common.sell')}</option>
-      </select>
-      <input type="date" class="filter-select filter-date" id="tl-from" value="${tlFilter.from}">
-      <input type="date" class="filter-select filter-date" id="tl-to"   value="${tlFilter.to}">
-    </div>
-    <div class="table-wrap"><div class="table-scroll">${renderTradeTable()}</div></div>
+    <div class="view-header"><span class="view-title">${t('trade.title')}</span><span></span></div>
+    <div class="trade-card" id="trade-card"></div>
   </div>`;
 
-  app.querySelector('[data-action="record-trade"]').addEventListener('click', () => openTradeModal());
-  app.querySelector('#tl-stock').addEventListener('change', e => { tlFilter.stockId=e.target.value; reRenderView(renderTradelog); });
-  app.querySelector('#tl-type').addEventListener('change',  e => { tlFilter.type=e.target.value;    reRenderView(renderTradelog); });
-  app.querySelector('#tl-from').addEventListener('change',  e => { tlFilter.from=e.target.value;    reRenderView(renderTradelog); });
-  app.querySelector('#tl-to').addEventListener('change',    e => { tlFilter.to=e.target.value;      reRenderView(renderTradelog); });
-  app.querySelectorAll('[data-delete-trade]').forEach(b => b.addEventListener('click', e => {
-    if (!confirm(t('trade.deleteConfirm'))) return;
-    const id = b.dataset.deleteTrade;
-    const tr = db.trades.find(x=>x.id===id);
-    db.trades = db.trades.filter(x=>x.id!==id);
-    if (tr) recalcStock(tr.stockId);
-    reRenderView(renderTradelog);
-  }));
+  render();
 }
+
 
 function renderTradeTable() {
   let rows = db.trades.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -2969,7 +3322,7 @@ function renderMydbStocks() {
   const page = mydbPage.stocks;
   const slice = items.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
   return `<div class="table-wrap"><div class="table-scroll"><table>
-    <thead><tr><th>Name</th><th>Ticker</th><th>Exch</th><th>Account</th><th>Category</th><th>Holdings</th><th>Avg Price</th><th>Cur Price</th><th></th></tr></thead>
+    <thead><tr><th>${t('cols.name')}</th><th>${t('cols.ticker')}</th><th>Exch</th><th>${t('cols.account')}</th><th>${t('cols.category')}</th><th>${t('cols.shares')}</th><th>${t('cols.avgPrice')}</th><th>${t('cols.curPrice')}</th><th>${t('cols.marketValue')}</th><th></th></tr></thead>
     <tbody>${slice.map(s=>`<tr>
       <td>${s.name}</td>
       <td class="mono" style="color:var(--accent)">${s.ticker}</td>
@@ -2978,6 +3331,7 @@ function renderMydbStocks() {
       <td class="td-num mono">${s.holdings}</td>
       <td class="td-num mono">${s.currency==='KRW'?'₩':'$'}${formatNum(s.avgPrice,2)}</td>
       <td class="td-num mono">${s.currentPrice!=null?formatPrice(s.currentPrice,s.currency):'--'}</td>
+      <td class="td-num mono fw-600">${s.currentPrice!=null?formatKRW(toKRW(s.holdings*s.currentPrice,s.currency)):'--'}</td>
       <td><button class="btn btn-ghost btn-sm btn-icon" data-delete-stock="${s.id}">✕</button></td>
     </tr>`).join('')}</tbody>
   </table></div>
