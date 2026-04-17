@@ -381,21 +381,60 @@ input[type="date"].form-input {
   overflow-x: auto;
   cursor: grab;
   user-select: none;
-  /* Custom scrollbar */
+  /* Custom scrollbar — always visible */
   scrollbar-width: thin;
-  scrollbar-color: var(--border2) transparent;
+  scrollbar-color: var(--border2) var(--surface2);
 }
 .table-scroll:active { cursor: grabbing; }
 .table-scroll.is-dragging { cursor: grabbing; }
 
-/* Webkit scrollbar */
-.table-scroll::-webkit-scrollbar { height: 5px; }
-.table-scroll::-webkit-scrollbar-track { background: transparent; }
+/* Webkit scrollbar — always visible */
+.table-scroll::-webkit-scrollbar { height: 6px; }
+.table-scroll::-webkit-scrollbar-track {
+  background: var(--surface2);
+  border-radius: 3px;
+}
 .table-scroll::-webkit-scrollbar-thumb {
   background: var(--border2);
   border-radius: 3px;
 }
 .table-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* Table scroll arrows — glass style, inside table boundaries */
+.table-scroll-wrap {
+  position: relative;
+}
+.scroll-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  z-index: 10;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.25);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text);
+  font-size: 15px; font-weight: 700;
+  transition: all 0.15s;
+  user-select: none;
+  line-height: 1;
+}
+[data-theme="dark"] .scroll-arrow {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.12);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+.scroll-arrow:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 16px rgba(37,99,235,0.4);
+}
+.scroll-arrow.left  { left: 10px; }
+.scroll-arrow.right { right: 10px; }
+.scroll-arrow.hidden { opacity: 0; pointer-events: none; }
 table { width: 100%; border-collapse: collapse; }
 thead { background: var(--surface2); }
 th {
@@ -1422,26 +1461,58 @@ function reRenderView(renderFn) {
   setTimeout(applyAllDragScrolls, 0);
 }
 
-// Drag-to-scroll: attach to any .table-scroll element
-function applyDragScroll(el) {
-  if (!el || el._dragBound) return;
-  el._dragBound = true;
+// Scroll arrows + drag: attach to any .table-wrap > .table-scroll
+function applyDragScroll(scrollEl) {
+  if (!scrollEl || scrollEl._dragBound) return;
+  scrollEl._dragBound = true;
+
+  // Wrap with relative container if not already
+  const wrap = scrollEl.closest('.table-wrap');
+  if (wrap && !wrap.querySelector('.scroll-arrow')) {
+    wrap.style.position = 'relative';
+    wrap.style.overflow = 'visible';
+
+    const btnL = document.createElement('button');
+    const btnR = document.createElement('button');
+    btnL.className = 'scroll-arrow left';  btnL.innerHTML = '&#8249;';
+    btnR.className = 'scroll-arrow right'; btnR.innerHTML = '&#8250;';
+    wrap.appendChild(btnL);
+    wrap.appendChild(btnR);
+
+    const STEP = 200;
+
+    function updateArrows() {
+      const atStart = scrollEl.scrollLeft <= 2;
+      const atEnd   = scrollEl.scrollLeft >= scrollEl.scrollWidth - scrollEl.clientWidth - 2;
+      const hasScroll = scrollEl.scrollWidth > scrollEl.clientWidth + 4;
+      btnL.classList.toggle('hidden', atStart  || !hasScroll);
+      btnR.classList.toggle('hidden', atEnd    || !hasScroll);
+    }
+
+    btnL.addEventListener('click', () => { scrollEl.scrollBy({ left: -STEP, behavior: 'smooth' }); });
+    btnR.addEventListener('click', () => { scrollEl.scrollBy({ left:  STEP, behavior: 'smooth' }); });
+    scrollEl.addEventListener('scroll', updateArrows);
+
+    // Update on resize too
+    const ro = new ResizeObserver(updateArrows);
+    ro.observe(scrollEl);
+    updateArrows();
+  }
+
+  // Drag to scroll
   let isDown = false, startX, scrollLeft;
-  el.addEventListener('mousedown', e => {
-    // don't hijack clicks on buttons/links inside table
+  scrollEl.addEventListener('mousedown', e => {
     if (e.target.closest('button,a,input,select')) return;
-    isDown = true;
-    el.classList.add('is-dragging');
-    startX = e.pageX - el.offsetLeft;
-    scrollLeft = el.scrollLeft;
+    isDown = true; scrollEl.classList.add('is-dragging');
+    startX = e.pageX - scrollEl.offsetLeft;
+    scrollLeft = scrollEl.scrollLeft;
   });
-  el.addEventListener('mouseleave', () => { isDown = false; el.classList.remove('is-dragging'); });
-  el.addEventListener('mouseup',    () => { isDown = false; el.classList.remove('is-dragging'); });
-  el.addEventListener('mousemove',  e => {
+  scrollEl.addEventListener('mouseleave', () => { isDown = false; scrollEl.classList.remove('is-dragging'); });
+  scrollEl.addEventListener('mouseup',    () => { isDown = false; scrollEl.classList.remove('is-dragging'); });
+  scrollEl.addEventListener('mousemove',  e => {
     if (!isDown) return;
     e.preventDefault();
-    const x = e.pageX - el.offsetLeft;
-    el.scrollLeft = scrollLeft - (x - startX);
+    scrollEl.scrollLeft = scrollLeft - (e.pageX - scrollEl.offsetLeft - startX);
   });
 }
 
